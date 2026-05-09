@@ -1,6 +1,7 @@
 from collections import defaultdict
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Literal
 import json
 
 import cv2
@@ -17,10 +18,18 @@ SUPPORTED_ARUCO_DICTIONARIES = {
     "7x7_50": cv2.aruco.DICT_7X7_50,
 }
 
+FeatureDetectorName = Literal["ORB", "AKAZE"]
+SUPPORTED_FEATURE_DETECTORS = {"ORB", "AKAZE"}
+
+
+class FeatureDetector:
+    ORB: FeatureDetectorName = "ORB"
+    AKAZE: FeatureDetectorName = "AKAZE"
+
 
 @dataclass
 class PlaneTrackingConfig:
-    feature_detector: str = "ORB"
+    feature_detector: FeatureDetectorName = "ORB"
     bruteforce_matcher: bool = True
     min_match_count: int = 8
     ransac_threshold: float = 4.0
@@ -31,6 +40,7 @@ class PlaneTrackingConfig:
     straighten_z_on_front: bool = True
     straight_rotation_start_angle_degrees: float = 5.0
     straight_rotation_end_angle_degrees: float = 10.0
+    yolo_bounds_history_size: int = 4
 
 
 @dataclass
@@ -221,7 +231,11 @@ class Plane:
         elif detector_name == "ORB":
             self.detector = cv2.ORB_create(1500, nlevels=8)
         else:
-            raise ValueError(f"Unsupported feature detector: {self.config.feature_detector}")
+            supported_detectors = ", ".join(sorted(SUPPORTED_FEATURE_DETECTORS))
+            raise ValueError(
+                f"Unsupported feature detector: {self.config.feature_detector}. "
+                f"Choose one of: {supported_detectors}"
+            )
 
         self.reference_keypoints, self.reference_descriptors = self.detector.detectAndCompute(reference_img_gray, None)
         if self.reference_descriptors is None or len(self.reference_keypoints) == 0:
