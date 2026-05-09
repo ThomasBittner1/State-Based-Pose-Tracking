@@ -22,6 +22,7 @@ class AppConfig:
     yolo_confidence: float = 0.1
     yolo_iou: float = 0.1
     yolo_input_size: int = 640
+    box_size: tuple[float, float, float] = (8.5, 14.0, 7.4)
     input_source: int | str | Path = 0
     start_frame: int = 60
     start_paused: bool = False
@@ -78,8 +79,8 @@ def build_tracker_config():
     )
 
 
-def build_reference_planes(plane_tracking_config, box_size=(8.5, 14.0, 7.4)):
-    Box_width, box_height, box_depth = box_size
+def build_reference_planes(plane_tracking_config, box_size):
+    box_width, box_height, box_depth = box_size
     aruco_registry = reference_plane.ArucoRegistry()
     pose_history = reference_plane.PoseHistory()
 
@@ -90,7 +91,7 @@ def build_reference_planes(plane_tracking_config, box_size=(8.5, 14.0, 7.4)):
         pose_history,
         plane_tracking_config,
         rotation_offset=[[0, 0, 1], [0, 1, 0], [-1, 0, 0]],
-        translation_offset=(0, 0, Box_width * 0.5),
+        translation_offset=(0, 0, box_width * 0.5),
         world_size=(box_depth, box_height),
         display_color_multiplier=0.5,
     )
@@ -101,7 +102,7 @@ def build_reference_planes(plane_tracking_config, box_size=(8.5, 14.0, 7.4)):
         pose_history,
         plane_tracking_config,
         rotation_offset=[[0, 0, -1], [0, 1, 0], [1, 0, 0]],
-        translation_offset=(0, 0, Box_width * 0.5),
+        translation_offset=(0, 0, box_width * 0.5),
         world_size=(box_depth, box_height),
         display_color_multiplier=0.5,
     )
@@ -113,7 +114,7 @@ def build_reference_planes(plane_tracking_config, box_size=(8.5, 14.0, 7.4)):
         plane_tracking_config,
         rotation_offset=[[1, 0, 0], [0, 1, 0], [0, 0, 1]],
         translation_offset=(0, 0, box_depth * 0.5),
-        world_size=(Box_width, box_height),
+        world_size=(box_width, box_height),
     )
     back_plane = reference_plane.Plane(
         'back',
@@ -123,14 +124,14 @@ def build_reference_planes(plane_tracking_config, box_size=(8.5, 14.0, 7.4)):
         plane_tracking_config,
         rotation_offset=[[-1, 0, 0], [0, 1, 0], [0, 0, -1]],
         translation_offset=(0, 0, box_depth * 0.5),
-        world_size=(Box_width, box_height),
+        world_size=(box_width, box_height),
     )
-    return [front_plane, left_plane, right_plane], back_plane, aruco_registry
+    return [front_plane, left_plane, right_plane, back_plane], aruco_registry
 
 
 def main():
     config = build_tracker_config()
-    all_planes, _back_plane, aruco_registry = build_reference_planes(config.plane_tracking)
+    all_planes, aruco_registry = build_reference_planes(config.plane_tracking, config.app.box_size)
     time_before_load_detection_model = time.time()
     detection_model = yolo_utils.load_detection_model(
         config.app.model_path,
@@ -342,7 +343,12 @@ def main():
 
         if not config.app.skip_tracking:
             if best_plane is not None:
-                drawing_utils.draw_box_overlay(frame_preview, active_camera_matrix, active_distortion_coefficients, blended_pose_result, BOX_SIZE, opacity=box_overlay_opacity)
+                drawing_utils.draw_box_overlay(frame_preview,
+                                               active_camera_matrix,
+                                               active_distortion_coefficients,
+                                               blended_pose_result,
+                                               config.app.box_size,
+                                               opacity=box_overlay_opacity)
             text_origin = (frame_preview.shape[1] - fps_text_width - 20, 20 + fps_text_height)
             cv2.putText(frame_preview, f"fps: {averaged_fps:.1f}", text_origin, cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 255), 2, cv2.LINE_AA)
 
