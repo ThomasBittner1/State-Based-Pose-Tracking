@@ -1,0 +1,46 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# IDE/editor state
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs and runtime output
+*.log
+recorded_*.mp4
+output/
+outputs/
+runs/
+
+# Local captures and calibration/runtime data
+captures/
+calibration/
+
+# Model binaries and exports
+models/*.pt
+models/*.pth
+models/*.onnx
+models/*.engine
+models/*.trt
+
+# Keep optional documentation placeholders if added later.
+!models/.gitkeep
+!captures/.gitkeep
