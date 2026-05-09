@@ -15,9 +15,6 @@ import yolo_utils
 
 WINDOW_NAME = "Box Tracker"
 
-BOX_SIZE = (8.5, 14.0, 7.4) # width, height, depth
-BOX_WIDTH, BOX_HEIGHT, BOX_DEPTH = BOX_SIZE
-
 
 @dataclass
 class AppConfig:
@@ -81,7 +78,8 @@ def build_tracker_config():
     )
 
 
-def build_reference_planes(plane_tracking_config):
+def build_reference_planes(plane_tracking_config, box_size=(8.5, 14.0, 7.4)):
+    Box_width, box_height, box_depth = box_size
     aruco_registry = reference_plane.ArucoRegistry()
     pose_history = reference_plane.PoseHistory()
 
@@ -92,8 +90,8 @@ def build_reference_planes(plane_tracking_config):
         pose_history,
         plane_tracking_config,
         rotation_offset=[[0, 0, 1], [0, 1, 0], [-1, 0, 0]],
-        translation_offset=(0, 0, BOX_WIDTH * 0.5),
-        world_size=(BOX_DEPTH, BOX_HEIGHT),
+        translation_offset=(0, 0, Box_width * 0.5),
+        world_size=(box_depth, box_height),
         display_color_multiplier=0.5,
     )
     right_plane = reference_plane.Plane(
@@ -103,8 +101,8 @@ def build_reference_planes(plane_tracking_config):
         pose_history,
         plane_tracking_config,
         rotation_offset=[[0, 0, -1], [0, 1, 0], [1, 0, 0]],
-        translation_offset=(0, 0, BOX_WIDTH * 0.5),
-        world_size=(BOX_DEPTH, BOX_HEIGHT),
+        translation_offset=(0, 0, Box_width * 0.5),
+        world_size=(box_depth, box_height),
         display_color_multiplier=0.5,
     )
     front_plane = reference_plane.Plane(
@@ -114,8 +112,8 @@ def build_reference_planes(plane_tracking_config):
         pose_history,
         plane_tracking_config,
         rotation_offset=[[1, 0, 0], [0, 1, 0], [0, 0, 1]],
-        translation_offset=(0, 0, BOX_DEPTH * 0.5),
-        world_size=(BOX_WIDTH, BOX_HEIGHT),
+        translation_offset=(0, 0, box_depth * 0.5),
+        world_size=(Box_width, box_height),
     )
     back_plane = reference_plane.Plane(
         'back',
@@ -124,8 +122,8 @@ def build_reference_planes(plane_tracking_config):
         pose_history,
         plane_tracking_config,
         rotation_offset=[[-1, 0, 0], [0, 1, 0], [0, 0, -1]],
-        translation_offset=(0, 0, BOX_DEPTH * 0.5),
-        world_size=(BOX_WIDTH, BOX_HEIGHT),
+        translation_offset=(0, 0, box_depth * 0.5),
+        world_size=(Box_width, box_height),
     )
     return [front_plane, left_plane, right_plane], back_plane, aruco_registry
 
