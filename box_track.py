@@ -23,15 +23,6 @@ ONNX_INPUT_SIZE = 640
 BRUTEFORCE_MATCHER = True
 
 NUM_CHECK_LAST_YOLO_BOX = 4
-MIN_MATCH_COUNT = 8
-RANSAC_THRESHOLD = 4.0
-FLOW_MAX_ERROR = 20.0
-FLOW_WINDOW_SIZE = (21, 21)
-FLOW_MAX_LEVEL = 3
-DRAW_HOMOGRAPHY_OUTLINE = False
-STRAIGHT_ROTATION_START_ANGLE_DEGREES = 5.0
-STRAIGHT_ROTATION_END_ANGLE_DEGREES = 10.0
-STRAIGHTEN_Z_ON_FRONT = True
 BOX_SIZE = (8.5, 14.0, 7.4) # width, height, depth
 BOX_WIDTH, BOX_HEIGHT, BOX_DEPTH = BOX_SIZE
 
@@ -70,15 +61,15 @@ def build_plane_tracking_config():
     return reference_plane.PlaneTrackingConfig(
         feature_detector=FEATURE_DETECTOR,
         bruteforce_matcher=BRUTEFORCE_MATCHER,
-        min_match_count=MIN_MATCH_COUNT,
-        ransac_threshold=RANSAC_THRESHOLD,
-        flow_max_error=FLOW_MAX_ERROR,
-        flow_window_size=FLOW_WINDOW_SIZE,
-        flow_max_level=FLOW_MAX_LEVEL,
-        draw_homography_outline=DRAW_HOMOGRAPHY_OUTLINE,
-        straighten_z_on_front=STRAIGHTEN_Z_ON_FRONT,
-        straight_rotation_start_angle_degrees=STRAIGHT_ROTATION_START_ANGLE_DEGREES,
-        straight_rotation_end_angle_degrees=STRAIGHT_ROTATION_END_ANGLE_DEGREES,
+        min_match_count=8,
+        ransac_threshold=4.0,
+        flow_max_error=20.0,
+        flow_window_size=(21, 21),
+        flow_max_level=3,
+        draw_homography_outline=False,
+        straighten_z_on_front=True,
+        straight_rotation_start_angle_degrees=5.0,
+        straight_rotation_end_angle_degrees=10.0,
     )
 
 

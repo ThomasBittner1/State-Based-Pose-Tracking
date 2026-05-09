@@ -5,7 +5,7 @@ import numpy as np
 import cv2
 
 
-CAMERA_INDEX = 1
+CAMERA_INDEX = 0
 WINDOW_NAME = "Record Image"
 OUTPUT_DIR = Path("captures")
 ARUCO_DICTIONARIES = {
