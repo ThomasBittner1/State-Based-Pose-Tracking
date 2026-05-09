@@ -32,3 +32,5 @@ python setup/box_capture_image.py "front"
 ```
 This opens the front.jpg image and let's you draw the rectangle by just clicking on the corners. When done, hit q, to
 close and generate the front.json file that contains the info about the rectangle
+
+If you want to calibrate the camera, run setup/calibrate_camera.py

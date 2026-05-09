@@ -7,6 +7,7 @@ import cv2
 import numpy as np
 
 
+import camera
 import drawing_utils
 import geometry_utils
 import reference_plane
@@ -23,6 +24,7 @@ class AppConfig:
     yolo_iou: float = 0.1
     yolo_input_size: int = 640
     box_size: tuple[float, float, float] = (8.5, 14.0, 7.4)
+    calibration_path: Path = Path("calibration/camera.json")
     input_source: int | str | Path = 0
     start_frame: int = 60
     start_paused: bool = False
@@ -39,12 +41,6 @@ class AppConfig:
 class TrackerConfig:
     app: AppConfig
     plane_tracking: reference_plane.PlaneTrackingConfig
-
-
-def create_fallback_camera_matrix(frame_shape):
-    frame_height, frame_width = frame_shape[:2]
-    focal_length = float(max(frame_width, frame_height))
-    return np.array([[focal_length, 0.0, frame_width / 2.0], [0.0, focal_length, frame_height / 2.0], [0.0, 0.0, 1.0]], dtype=np.float32)
 
 
 def draw_frame_number(frame, frame_rate=None, frame_number=None):
@@ -191,8 +187,14 @@ def main():
             cap.release()
             sys.exit(1)
         movie_writer.write(frame)
-    active_camera_matrix = create_fallback_camera_matrix(frame.shape)
-    active_distortion_coefficients = np.zeros((5, 1), dtype=np.float32)
+    calibration = camera.load_calibration(config.app.calibration_path)
+    if calibration is None:
+        calibration = camera.create_fallback_calibration(frame.shape)
+        print(f"No camera calibration found at {config.app.calibration_path}; using fallback intrinsics.")
+    else:
+        print(f"Loaded camera calibration from {config.app.calibration_path}.")
+    active_camera_matrix = calibration.camera_matrix
+    active_distortion_coefficients = calibration.distortion_coefficients
     current_frame_number = config.app.start_frame if is_video_file else 0
     use_current_frame = True
     step_once = False

@@ -1,16 +1,24 @@
-import json
 from pathlib import Path
+import sys
 
 import cv2
 import numpy as np
+
+
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
+import camera
 
 
 CAMERA_INDEX = 0
 CHESSBOARD_SIZE = (9, 6)
 SQUARE_SIZE = 1.0
 MIN_CAPTURES = 12
-OUTPUT_PATH = Path("camera_calibration.json")
+OUTPUT_PATH = PROJECT_ROOT / "calibration" / "camera.json"
 PREVIEW_WINDOW = "Camera Calibration"
+SPACE_KEY = 32
 
 
 def create_object_points():
@@ -18,20 +26,6 @@ def create_object_points():
     object_points[:, :2] = np.indices(CHESSBOARD_SIZE).T.reshape(-1, 2)
     object_points *= SQUARE_SIZE
     return object_points
-
-
-def save_calibration(camera_matrix, distortion_coefficients, image_size, rms_error):
-    payload = {
-        "camera_matrix": camera_matrix.tolist(),
-        "distortion_coefficients": distortion_coefficients.tolist(),
-        "image_width": image_size[0],
-        "image_height": image_size[1],
-        "rms_error": float(rms_error),
-        "chessboard_size": list(CHESSBOARD_SIZE),
-        "square_size": float(SQUARE_SIZE),
-    }
-    with OUTPUT_PATH.open("w", encoding="utf-8") as file:
-        json.dump(payload, file, indent=2)
 
 
 def main():
@@ -67,7 +61,7 @@ def main():
         found, corners = cv2.findChessboardCorners(gray, CHESSBOARD_SIZE)
 
         preview = frame.copy()
-        message = f"captures: {len(image_points)}/{MIN_CAPTURES}"
+        message = f"captures: {len(image_points)}/{MIN_CAPTURES} | SPACE: capture | SPACE: calibrate | Q: quit"
 
         if found:
             refined_corners = cv2.cornerSubPix(
@@ -96,7 +90,7 @@ def main():
 
         key = cv2.waitKey(1) & 0xFF
 
-        if key == ord(" "):
+        if key == SPACE_KEY:
             if refined_corners is None:
                 print("No chessboard detected in the current frame.")
                 continue
@@ -117,7 +111,15 @@ def main():
                 None,
                 None,
             )
-            save_calibration(camera_matrix, distortion_coefficients, image_size, rms_error)
+            camera.save_camera_calibration(
+                OUTPUT_PATH,
+                camera_matrix,
+                distortion_coefficients,
+                image_size,
+                rms_error,
+                chessboard_size=CHESSBOARD_SIZE,
+                square_size=SQUARE_SIZE,
+            )
             print(f"Saved calibration to {OUTPUT_PATH}")
             print(f"RMS reprojection error: {rms_error:.4f}")
             print("Camera matrix:")
