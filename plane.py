@@ -12,7 +12,7 @@ import geometry
 
 
 LABEL_PATCH_WIDTH = 320
-LABEL_MASK_CACHE = {}
+RENDERED_LABEL_CACHE = {}
 
 
 SUPPORTED_ARUCO_DICTIONARIES = {
@@ -135,11 +135,11 @@ class Plane:
         self.display_color_multiplier = float(np.clip(display_color_multiplier, 0.0, 1.0))
         self.crop_reference_image(json_path)
 
-    def _render_label_masks(self, label, face_width, face_height):
+    def get_rendered_label(self, label, face_width, face_height):
         aspect_ratio = round(float(face_height) / max(float(face_width), 1e-6), 4)
         cache_key = (label, aspect_ratio)
-        if cache_key in LABEL_MASK_CACHE:
-            return LABEL_MASK_CACHE[cache_key]
+        if cache_key in RENDERED_LABEL_CACHE:
+            return RENDERED_LABEL_CACHE[cache_key]
 
         patch_width = LABEL_PATCH_WIDTH
         patch_height = max(96, int(round(patch_width * face_height / max(face_width, 1e-6))))
@@ -157,10 +157,10 @@ class Plane:
             max(text_size[1], (patch_height + text_size[1]) // 2 - baseline),
         )
 
-        text_mask = np.zeros((patch_height, patch_width), dtype=np.uint8)
-        cv2.putText(text_mask, label, origin, font, font_scale, 255, thickness, cv2.LINE_AA)
-        LABEL_MASK_CACHE[cache_key] = text_mask
-        return text_mask
+        rendered_label = np.zeros((patch_height, patch_width), dtype=np.uint8)
+        cv2.putText(rendered_label, label, origin, font, font_scale, 255, thickness, cv2.LINE_AA)
+        RENDERED_LABEL_CACHE[cache_key] = rendered_label
+        return rendered_label
 
     def _draw_face_label(self, frame, face_points, face_width, face_height):
         if abs(cv2.contourArea(face_points.astype(np.float32))) < 64.0:
@@ -172,13 +172,13 @@ class Plane:
         if max_x <= min_x or max_y <= min_y:
             return
 
-        text_mask = self._render_label_masks(self.name, face_width, face_height)
+        rendered_label = self.get_rendered_label(self.name, face_width, face_height)
         source_quad = np.array(
             [
                 [0.0, 0.0],
-                [text_mask.shape[1] - 1.0, 0.0],
-                [text_mask.shape[1] - 1.0, text_mask.shape[0] - 1.0],
-                [0.0, text_mask.shape[0] - 1.0],
+                [rendered_label.shape[1] - 1.0, 0.0],
+                [rendered_label.shape[1] - 1.0, rendered_label.shape[0] - 1.0],
+                [0.0, rendered_label.shape[0] - 1.0],
             ],
             dtype=np.float32,
         )
@@ -186,7 +186,7 @@ class Plane:
         homography = cv2.getPerspectiveTransform(source_quad, local_face_points)
         roi_size = (max_x - min_x, max_y - min_y)
         warped_text = cv2.warpPerspective(
-            text_mask,
+            rendered_label,
             homography,
             roi_size,
             flags=cv2.INTER_LINEAR,
