@@ -40,13 +40,13 @@ measurements automatically.
 First capture the sides of the box. Run the following command:
 
 ``` bash
-python setup/box_annotate_image.py "front"
+python setup/annotate_image.py "front"
 ```
 Hold the **front** side into the camera, as frontal as possible, and click SPACE. This creates or overwrites
 *front.png* inside the captures directory. Click q to close, and then run:
 
 ``` bash
-python setup/box_capture_image.py "front"
+python setup/capture_image.py "front"
 ```
 This opens the *front.jpg* image and let's you draw the rectangle by just clicking on the corners. When done, hit q to
 close. This generates the *front.json* file that contains the info about the rectangle.
