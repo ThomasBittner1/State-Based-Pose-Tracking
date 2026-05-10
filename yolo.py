@@ -176,7 +176,7 @@ def onnx_output_to_detections(outputs, frame_shape, scale, pad_x, pad_y, confide
         predictions = predictions[0]
     if predictions.ndim != 2:
         return []
-    if predictions.shape[0] < predictions.shape[1]:
+    if predictions.shape[0] >= 5 and (predictions.shape[1] < 5 or predictions.shape[0] < predictions.shape[1]):
         predictions = predictions.T
     if predictions.shape[1] < 5:
         return []
