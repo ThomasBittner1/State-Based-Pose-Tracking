@@ -162,7 +162,7 @@ class Plane:
         RENDERED_LABEL_CACHE[cache_key] = rendered_label
         return rendered_label
 
-    def _draw_face_label(self, frame, face_points, face_width, face_height):
+    def draw_label(self, frame, face_points, face_width, face_height):
         if abs(cv2.contourArea(face_points.astype(np.float32))) < 64.0:
             return
         min_x = max(0, int(np.floor(np.min(face_points[:, 0]))) - 2)
@@ -620,7 +620,7 @@ class Plane:
                     if draw_label:
                         face_width = float(np.linalg.norm(face_points[1] - face_points[0]))
                         face_height = float(np.linalg.norm(face_points[3] - face_points[0]))
-                        self._draw_face_label(frame, projected_points, face_width, face_height)
+                        self.draw_label(frame, projected_points, face_width, face_height)
 
 
 
