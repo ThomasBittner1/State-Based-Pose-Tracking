@@ -186,8 +186,7 @@ class Plane:
         self.reference_center_y = (self.reference_height - 1) * 0.5
 
 
-    def compute_feature_correspondences(self, box_size, plane_size, rotation_offset=None, translation_offset=(0.0, 0.0, 0.0)):
-        self.box_size = box_size
+    def compute_feature_correspondences(self, plane_size, rotation_offset=None, translation_offset=(0.0, 0.0, 0.0)):
         if rotation_offset is None:
             rotation_offset = [[1, 0, 0], [0, 1, 0], [0, 0, 1]]
         self.rotation_offset = np.array(rotation_offset, dtype=np.float64)

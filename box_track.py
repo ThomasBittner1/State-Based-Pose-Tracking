@@ -111,15 +111,15 @@ def build_reference_planes(plane_tracking_config):
     box_height = box_width / front_plane.ratio
     box_depth = box_height * right_plane.ratio
     box_size = (box_width, box_height, box_depth)
-    print (f'Estimated size is ({box_width:.3f}, {box_height:.3f}, {box_depth:.3f}')
+    print (f'Estimated size is ({box_size[0]:.3f}, {box_size[1]:.3f}, {box_size[2]:.3f}')
 
-    front_plane.compute_feature_correspondences(box_size, (box_width, box_height),
+    front_plane.compute_feature_correspondences((box_width, box_height),
                                                 rotation_offset=[[1, 0, 0], [0, 1, 0], [0, 0, 1]], translation_offset=(0, 0, box_depth * 0.5))
-    back_plane.compute_feature_correspondences(box_size, (box_width, box_height),
+    back_plane.compute_feature_correspondences((box_width, box_height),
                                                rotation_offset=[[-1, 0, 0], [0, 1, 0], [0, 0, -1]], translation_offset=(0, 0, box_depth * 0.5),)
-    left_plane.compute_feature_correspondences(box_size, (box_depth, box_height),
+    left_plane.compute_feature_correspondences((box_depth, box_height),
                                                rotation_offset=[[0, 0, 1], [0, 1, 0], [-1, 0, 0]], translation_offset=(0, 0, box_width * 0.5))
-    right_plane.compute_feature_correspondences(box_size, (box_depth, box_height),
+    right_plane.compute_feature_correspondences((box_depth, box_height),
                                                 rotation_offset=[[0, 0, -1], [0, 1, 0], [1, 0, 0]], translation_offset=(0, 0, box_width * 0.5))
 
     return [front_plane, left_plane, right_plane, back_plane], aruco_registry, box_size
