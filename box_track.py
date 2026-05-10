@@ -18,24 +18,24 @@ WINDOW_NAME = "Box Tracker"
 
 @dataclass
 class AppConfig:
+    input_source: int | str | Path = 0 # this is the camera index or video path
+    camera_calibration_path: Path = Path("calibration/camera.json")
     model_path: Path = Path("models/best.engine")
     yolo_confidence: float = 0.1
     yolo_iou: float = 0.1
     yolo_input_size: int = 640
-    calibration_path: Path = Path("calibration/camera.json")
-    input_source: int | str | Path = 0
     start_frame: int = 60
-    start_paused: bool = False
-    record_webcam: bool = False
-    recording_path: Path = Path("recorded_001.mp4")
     default_fps: float = 30.0
     output_frame_width: int = 1440
     timing_average_window: int = 10
     skip_tracking: bool = False
     enable_pose_kalman: bool = True
     draw_face_labels: bool = True
-    print_timing: bool = False
+
     timing_log_interval: int = 60
+    record_webcam: bool = False
+    recording_path: Path = Path("recorded_001.mp4")
+    print_timing: bool = False
 
 
 @dataclass
@@ -147,7 +147,7 @@ def main():
 
     movie_writer = None
     paused = False
-    pause_after_first_frame = config.app.start_paused
+    pause_after_first_frame = False
     debug_view = False
     recent_yolo_bounds = []
     blended_pose_result = None
@@ -177,12 +177,12 @@ def main():
             cap.release()
             sys.exit(1)
         movie_writer.write(frame)
-    calibration = camera.load_calibration(config.app.calibration_path)
+    calibration = camera.load_calibration(config.app.camera_calibration_path)
     if calibration is None:
         calibration = camera.create_fallback_calibration(frame.shape)
-        print(f"No camera calibration found at {config.app.calibration_path}; using fallback intrinsics.")
+        print(f"No camera calibration found at {config.app.camera_calibration_path}; using fallback intrinsics.")
     else:
-        print(f"Loaded camera calibration from {config.app.calibration_path}.")
+        print(f"Loaded camera calibration from {config.app.camera_calibration_path}.")
     active_camera_matrix = calibration.camera_matrix
     active_distortion_coefficients = calibration.distortion_coefficients
     current_frame_number = config.app.start_frame if is_video_file else 0
