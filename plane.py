@@ -158,12 +158,10 @@ class Plane:
             max(text_size[1], (patch_height + text_size[1]) // 2 - baseline),
         )
 
-        fill_mask = np.zeros((patch_height, patch_width), dtype=np.uint8)
-        outline_mask = np.zeros_like(fill_mask)
-        cv2.putText(outline_mask, label, origin, font, font_scale, 255, thickness + 3, cv2.LINE_AA)
-        cv2.putText(fill_mask, label, origin, font, font_scale, 255, thickness, cv2.LINE_AA)
-        LABEL_MASK_CACHE[cache_key] = outline_mask, fill_mask
-        return outline_mask, fill_mask
+        text_mask = np.zeros((patch_height, patch_width), dtype=np.uint8)
+        cv2.putText(text_mask, label, origin, font, font_scale, 255, thickness, cv2.LINE_AA)
+        LABEL_MASK_CACHE[cache_key] = text_mask
+        return text_mask
 
     @classmethod
     def _draw_face_label(cls, frame, label, destination_quad, face_width, face_height):
@@ -176,29 +174,21 @@ class Plane:
         if max_x <= min_x or max_y <= min_y:
             return
 
-        outline_mask, fill_mask = cls._render_label_masks(label, face_width, face_height)
+        text_mask = cls._render_label_masks(label, face_width, face_height)
         source_quad = np.array(
             [
                 [0.0, 0.0],
-                [outline_mask.shape[1] - 1.0, 0.0],
-                [outline_mask.shape[1] - 1.0, outline_mask.shape[0] - 1.0],
-                [0.0, outline_mask.shape[0] - 1.0],
+                [text_mask.shape[1] - 1.0, 0.0],
+                [text_mask.shape[1] - 1.0, text_mask.shape[0] - 1.0],
+                [0.0, text_mask.shape[0] - 1.0],
             ],
             dtype=np.float32,
         )
         local_destination_quad = destination_quad.astype(np.float32) - np.array([min_x, min_y], dtype=np.float32)
         homography = cv2.getPerspectiveTransform(source_quad, local_destination_quad)
         roi_size = (max_x - min_x, max_y - min_y)
-        warped_outline = cv2.warpPerspective(
-            outline_mask,
-            homography,
-            roi_size,
-            flags=cv2.INTER_LINEAR,
-            borderMode=cv2.BORDER_CONSTANT,
-            borderValue=0,
-        )
-        warped_fill = cv2.warpPerspective(
-            fill_mask,
+        warped_text = cv2.warpPerspective(
+            text_mask,
             homography,
             roi_size,
             flags=cv2.INTER_LINEAR,
@@ -206,8 +196,7 @@ class Plane:
             borderValue=0,
         )
         frame_roi = frame[min_y:max_y, min_x:max_x]
-        frame_roi[warped_outline > 0] = (0, 0, 0)
-        frame_roi[warped_fill > 0] = (255, 255, 255)
+        frame_roi[warped_text > 0] = (255, 255, 255)
 
     def get_corners_in_box_coordinates(self):
         rotation_offset = np.asarray(self.rotation_offset, dtype=np.float64)
