@@ -113,8 +113,6 @@ class Plane:
         aruco_registry,
         pose_history,
         config=None,
-        rotation_offset=None,
-        translation_offset=(0.0, 0.0, 0.0),
         world_size=(1.0, 1.0),
         display_color_multiplier=1.0,
     ):
@@ -131,12 +129,8 @@ class Plane:
         self.inlier_matches = []
         self.pose_result = None
         self.world_size = world_size
-        if rotation_offset is None:
-            rotation_offset = [[1, 0, 0], [0, 1, 0], [0, 0, 1]]
-        self.rotation_offset = np.array(rotation_offset, dtype=np.float64)
-        self.translation_offset = np.array(translation_offset, dtype=np.float64)
         self.display_color_multiplier = float(np.clip(display_color_multiplier, 0.0, 1.0))
-        self.warp_and_update_reference(json_path)
+        self.crop_reference_image(json_path)
 
     def get_scaled_reference_size(self, reference_column_width):
         self.reference_height, self.reference_width = self.warped_reference_img.shape[:2]
@@ -148,7 +142,7 @@ class Plane:
         gray = sum(color) / 3.0
         return tuple(int(round(gray + (channel - gray) * self.display_color_multiplier)) for channel in color)
 
-    def warp_and_update_reference(self, image_or_json_path):
+    def crop_reference_image(self, image_or_json_path):
         input_path = Path(image_or_json_path)
         json_path = input_path.with_suffix(".json")
         image_path = json_path.with_suffix(".png")
@@ -190,21 +184,26 @@ class Plane:
         self.reference_height, self.reference_width = self.warped_reference_img.shape[:2]
         self.reference_center_x = (self.reference_width - 1) * 0.5
         self.reference_center_y = (self.reference_height - 1) * 0.5
-        self.create_measurements()
 
 
-    def create_measurements(self):
+    def compute_feature_correspondences(self, box_size, plane_size, rotation_offset=None, translation_offset=(0.0, 0.0, 0.0)):
+        self.box_size = box_size
+        if rotation_offset is None:
+            rotation_offset = [[1, 0, 0], [0, 1, 0], [0, 0, 1]]
+        self.rotation_offset = np.array(rotation_offset, dtype=np.float64)
+        self.translation_offset = np.array(translation_offset, dtype=np.float64)
+
         self.four_corner_points_3d = np.array(
             [
-                (-self.world_size[0] * 0.5, -self.world_size[1] * 0.5, 0.0),
-                (self.world_size[0] * 0.5, -self.world_size[1] * 0.5, 0.0),
-                (self.world_size[0] * 0.5, self.world_size[1] * 0.5, 0.0),
-                (-self.world_size[0] * 0.5, self.world_size[1] * 0.5, 0.0),
+                (-plane_size[0] * 0.5, -plane_size[1] * 0.5, 0.0),
+                (plane_size[0] * 0.5, -plane_size[1] * 0.5, 0.0),
+                (plane_size[0] * 0.5, plane_size[1] * 0.5, 0.0),
+                (-plane_size[0] * 0.5, plane_size[1] * 0.5, 0.0),
             ],
             dtype=np.float32,
         )
-        width_scale = self.world_size[0] / max(1.0, float(self.reference_width - 1))
-        height_scale = self.world_size[1] / max(1.0, float(self.reference_height - 1))
+        width_scale = plane_size[0] / max(1.0, float(self.reference_width - 1))
+        height_scale = plane_size[1] / max(1.0, float(self.reference_height - 1))
 
         mirrored_warped_reference_img = cv2.flip(self.warped_reference_img, 1)
         for dictionary_name in self.aruco_registry.dictionaries:

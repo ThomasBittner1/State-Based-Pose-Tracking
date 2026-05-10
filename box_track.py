@@ -23,7 +23,6 @@ class AppConfig:
     yolo_confidence: float = 0.1
     yolo_iou: float = 0.1
     yolo_input_size: int = 640
-    box_size: tuple[float, float, float] = (8.500, 13.765, 7.673)
     calibration_path: Path = Path("calibration/camera.json")
     input_source: int | str | Path = 0
     start_frame: int = 60
@@ -75,8 +74,7 @@ def build_tracker_config():
     )
 
 
-def build_reference_planes(plane_tracking_config, box_size):
-    box_width, box_height, box_depth = box_size
+def build_reference_planes(plane_tracking_config):
     aruco_registry = plane.ArucoRegistry()
     pose_history = plane.PoseHistory()
 
@@ -86,10 +84,6 @@ def build_reference_planes(plane_tracking_config, box_size):
         aruco_registry,
         pose_history,
         plane_tracking_config,
-        rotation_offset=[[0, 0, 1], [0, 1, 0], [-1, 0, 0]],
-        translation_offset=(0, 0, box_width * 0.5),
-        world_size=(box_depth, box_height),
-        display_color_multiplier=0.5,
     )
     right_plane = plane.Plane(
         'right',
@@ -97,10 +91,6 @@ def build_reference_planes(plane_tracking_config, box_size):
         aruco_registry,
         pose_history,
         plane_tracking_config,
-        rotation_offset=[[0, 0, -1], [0, 1, 0], [1, 0, 0]],
-        translation_offset=(0, 0, box_width * 0.5),
-        world_size=(box_depth, box_height),
-        display_color_multiplier=0.5,
     )
     front_plane = plane.Plane(
         'front',
@@ -108,9 +98,6 @@ def build_reference_planes(plane_tracking_config, box_size):
         aruco_registry,
         pose_history,
         plane_tracking_config,
-        rotation_offset=[[1, 0, 0], [0, 1, 0], [0, 0, 1]],
-        translation_offset=(0, 0, box_depth * 0.5),
-        world_size=(box_width, box_height),
     )
     back_plane = plane.Plane(
         'back',
@@ -118,22 +105,29 @@ def build_reference_planes(plane_tracking_config, box_size):
         aruco_registry,
         pose_history,
         plane_tracking_config,
-        rotation_offset=[[-1, 0, 0], [0, 1, 0], [0, 0, -1]],
-        translation_offset=(0, 0, box_depth * 0.5),
-        world_size=(box_width, box_height),
     )
 
     box_width = 10.0
     box_height = box_width / front_plane.ratio
     box_depth = box_height * right_plane.ratio
+    box_size = (box_width, box_height, box_depth)
     print (f'Estimated size is ({box_width:.3f}, {box_height:.3f}, {box_depth:.3f}')
 
-    return [front_plane, left_plane, right_plane, back_plane], aruco_registry
+    front_plane.compute_feature_correspondences(box_size, (box_width, box_height),
+                                                rotation_offset=[[1, 0, 0], [0, 1, 0], [0, 0, 1]], translation_offset=(0, 0, box_depth * 0.5))
+    back_plane.compute_feature_correspondences(box_size, (box_width, box_height),
+                                               rotation_offset=[[-1, 0, 0], [0, 1, 0], [0, 0, -1]], translation_offset=(0, 0, box_depth * 0.5),)
+    left_plane.compute_feature_correspondences(box_size, (box_depth, box_height),
+                                               rotation_offset=[[0, 0, 1], [0, 1, 0], [-1, 0, 0]], translation_offset=(0, 0, box_width * 0.5))
+    right_plane.compute_feature_correspondences(box_size, (box_depth, box_height),
+                                                rotation_offset=[[0, 0, -1], [0, 1, 0], [1, 0, 0]], translation_offset=(0, 0, box_width * 0.5))
+
+    return [front_plane, left_plane, right_plane, back_plane], aruco_registry, box_size
 
 
 def main():
     config = build_tracker_config()
-    all_planes, aruco_registry = build_reference_planes(config.plane_tracking, config.app.box_size)
+    all_planes, aruco_registry, box_size = build_reference_planes(config.plane_tracking)
     time_before_load_detection_model = time.time()
     detection_model = yolo.load_detection_model(
         config.app.model_path,
@@ -355,7 +349,7 @@ def main():
                                                active_camera_matrix,
                                                active_distortion_coefficients,
                                                blended_pose_result,
-                                               config.app.box_size,
+                                               box_size,
                                                opacity=box_overlay_opacity)
             text_origin = (frame_preview.shape[1] - fps_text_width - 20, 20 + fps_text_height)
             cv2.putText(frame_preview, f"fps: {averaged_fps:.1f}", text_origin, cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 255), 2, cv2.LINE_AA)
