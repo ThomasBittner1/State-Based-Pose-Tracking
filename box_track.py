@@ -93,34 +93,10 @@ def build_reference_planes(plane_tracking_config):
     aruco_registry = plane.ArucoRegistry()
     pose_history = plane.PoseHistory()
 
-    left_plane = plane.Plane(
-        'left',
-        './captures/left.json',
-        aruco_registry,
-        pose_history,
-        plane_tracking_config,
-    )
-    right_plane = plane.Plane(
-        'right',
-        './captures/right.json',
-        aruco_registry,
-        pose_history,
-        plane_tracking_config,
-    )
-    front_plane = plane.Plane(
-        'front',
-        './captures/front.json',
-        aruco_registry,
-        pose_history,
-        plane_tracking_config,
-    )
-    back_plane = plane.Plane(
-        'back',
-        './captures/back.json',
-        aruco_registry,
-        pose_history,
-        plane_tracking_config,
-    )
+    left_plane = plane.Plane('left', './captures/left.json', aruco_registry, pose_history, plane_tracking_config)
+    right_plane = plane.Plane('right', './captures/right.json', aruco_registry, pose_history, plane_tracking_config)
+    front_plane = plane.Plane('front', './captures/front.json', aruco_registry, pose_history, plane_tracking_config)
+    back_plane = plane.Plane('back', './captures/back.json', aruco_registry, pose_history, plane_tracking_config)
 
     box_width = 10.0
     box_height = box_width / front_plane.ratio
@@ -137,7 +113,7 @@ def build_reference_planes(plane_tracking_config):
     right_plane.compute_feature_correspondences((box_depth, box_height),
                                                 rotation_offset=[[0, 0, -1], [0, 1, 0], [1, 0, 0]], translation_offset=(0, 0, box_width * 0.5))
 
-    return [front_plane, left_plane, right_plane, back_plane], aruco_registry
+    return [front_plane, left_plane, right_plane, back_plane, back_plane], aruco_registry
 
 
 def main():
