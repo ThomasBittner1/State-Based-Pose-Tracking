@@ -135,8 +135,7 @@ class Plane:
         self.display_color_multiplier = float(np.clip(display_color_multiplier, 0.0, 1.0))
         self.crop_reference_image(json_path)
 
-    @staticmethod
-    def _render_label_masks(label, face_width, face_height):
+    def _render_label_masks(self, label, face_width, face_height):
         aspect_ratio = round(float(face_height) / max(float(face_width), 1e-6), 4)
         cache_key = (label, aspect_ratio)
         if cache_key in LABEL_MASK_CACHE:
@@ -163,8 +162,7 @@ class Plane:
         LABEL_MASK_CACHE[cache_key] = text_mask
         return text_mask
 
-    @classmethod
-    def _draw_face_label(cls, frame, label, destination_quad, face_width, face_height):
+    def _draw_face_label(self, frame, destination_quad, face_width, face_height):
         if abs(cv2.contourArea(destination_quad.astype(np.float32))) < 64.0:
             return
         min_x = max(0, int(np.floor(np.min(destination_quad[:, 0]))) - 2)
@@ -174,7 +172,7 @@ class Plane:
         if max_x <= min_x or max_y <= min_y:
             return
 
-        text_mask = cls._render_label_masks(label, face_width, face_height)
+        text_mask = self._render_label_masks(self.name, face_width, face_height)
         source_quad = np.array(
             [
                 [0.0, 0.0],
@@ -617,12 +615,12 @@ class Plane:
                 )
                 projected_points = projected_points.reshape(-1, 2)
                 if np.isfinite(projected_points).all():
-                    polygon = np.rint(projected_points).astype(np.int32)
-                    cv2.polylines(frame, [polygon], isClosed=True, color=(255, 255, 255), thickness=3, lineType=cv2.LINE_AA)
+                    cv2.polylines(frame, [np.rint(projected_points).astype(np.int32)],
+                                  isClosed=True, color=(255, 255, 255), thickness=3, lineType=cv2.LINE_AA)
                     if draw_label:
                         face_width = float(np.linalg.norm(face_points[1] - face_points[0]))
                         face_height = float(np.linalg.norm(face_points[3] - face_points[0]))
-                        self._draw_face_label(frame, self.name, projected_points, face_width, face_height)
+                        self._draw_face_label(frame, projected_points, face_width, face_height)
 
 
 
