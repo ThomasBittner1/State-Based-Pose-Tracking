@@ -40,7 +40,6 @@ class PlaneTrackingConfig:
     flow_max_error: float = 20.0
     flow_window_size: tuple[int, int] = (21, 21)
     flow_max_level: int = 3
-    draw_homography_outline: bool = False
     straighten_z_on_front: bool = True
     straight_rotation_start_angle_degrees: float = 5.0
     straight_rotation_end_angle_degrees: float = 10.0
@@ -612,81 +611,61 @@ class Plane:
     ):
         if pose_result is None:
             pose_result = self.pose_result
+        if not isinstance(pose_result, tuple) or len(pose_result) != 2:
+            return False
         opacity = float(np.clip(opacity, 0.0, 1.0))
         if opacity <= 0.0:
             return False
 
         drew_face = False
-        if isinstance(pose_result, tuple) and len(pose_result) == 2 and all(
-            hasattr(self, attribute) for attribute in ("four_corner_points_3d", "rotation_offset", "translation_offset")
-        ):
-            rotation_vector, translation_vector = pose_result
-            rotation_matrix, _ = cv2.Rodrigues(rotation_vector)
-            translation_vector = np.asarray(translation_vector, dtype=np.float64).reshape(1, 3)
-            face_points = self.get_corners_in_box_coordinates()
-            face_points_camera = (rotation_matrix @ face_points.T).T + translation_vector
-            if np.isfinite(face_points_camera).all() and not np.any(face_points_camera[:, 2] <= 1e-6):
-                is_visible = self.is_face_visible(face_points, face_points_camera)
-                if is_visible or not skip_if_not_visible:
-                    projected_points, _ = cv2.projectPoints(
-                        face_points,
-                        rotation_vector,
-                        translation_vector.reshape(3),
-                        camera_matrix,
-                        distortion_coefficients,
-                    )
-                    projected_points = projected_points.reshape(-1, 2)
-                    if np.isfinite(projected_points).all():
-                        overlay = np.copy(frame)
-                        polygon = np.rint(projected_points).astype(np.int32)
-                        cv2.polylines(overlay, [polygon], isClosed=True, color=(255, 255, 255), thickness=3, lineType=cv2.LINE_AA)
-                        if draw_label:
-                            face_width = float(np.linalg.norm(face_points[1] - face_points[0]))
-                            face_height = float(np.linalg.norm(face_points[3] - face_points[0]))
-                            self._draw_face_label(overlay, self.name, projected_points, face_width, face_height)
-                        cv2.addWeighted(overlay, opacity, frame, 1.0 - opacity, 0.0, frame)
-                        drew_face = True
-            elif skip_if_not_visible:
-                return False
+        rotation_vector, translation_vector = pose_result
+        rotation_matrix, _ = cv2.Rodrigues(rotation_vector)
+        translation_vector = np.asarray(translation_vector, dtype=np.float64).reshape(1, 3)
+        face_points = self.get_corners_in_box_coordinates()
+        face_points_camera = (rotation_matrix @ face_points.T).T + translation_vector
+        if np.isfinite(face_points_camera).all() and not np.any(face_points_camera[:, 2] <= 1e-6):
+            is_visible = self.is_face_visible(face_points, face_points_camera)
+            if is_visible or not skip_if_not_visible:
+                projected_points, _ = cv2.projectPoints(
+                    face_points,
+                    rotation_vector,
+                    translation_vector.reshape(3),
+                    camera_matrix,
+                    distortion_coefficients,
+                )
+                projected_points = projected_points.reshape(-1, 2)
+                if np.isfinite(projected_points).all():
+                    overlay = np.copy(frame)
+                    polygon = np.rint(projected_points).astype(np.int32)
+                    cv2.polylines(overlay, [polygon], isClosed=True, color=(255, 255, 255), thickness=3, lineType=cv2.LINE_AA)
+                    if draw_label:
+                        face_width = float(np.linalg.norm(face_points[1] - face_points[0]))
+                        face_height = float(np.linalg.norm(face_points[3] - face_points[0]))
+                        self._draw_face_label(overlay, self.name, projected_points, face_width, face_height)
+                    cv2.addWeighted(overlay, opacity, frame, 1.0 - opacity, 0.0, frame)
+                    drew_face = True
+        elif skip_if_not_visible:
+            return False
 
         if not draw_axes:
             return drew_face
 
-        if isinstance(self.pose_result, tuple) and len(self.pose_result) == 2:
-            rotation_vector, translation_vector = self.pose_result
-
-            axis_points = np.array([(0.0, 0.0, 0.0), (4.0, 0.0, 0.0), (0.0, 4.0, 0.0), (0.0, 0.0, 4.0)], dtype=np.float32)
-            rotation_matrix, _ = cv2.Rodrigues(rotation_vector)
-            axis_points_camera = (rotation_matrix @ axis_points.T).T + translation_vector.reshape(1, 3)
-            if not np.isfinite(axis_points_camera).all() or np.any(axis_points_camera[:, 2] <= 1e-6):
-                return drew_face
-            projected_points, _ = cv2.projectPoints(axis_points, rotation_vector, translation_vector, camera_matrix, distortion_coefficients)
-            projected_points = projected_points.reshape(-1, 2)
-            if np.isfinite(projected_points).all():
-                projected_points = np.rint(projected_points).astype(np.int32)
-                origin = (int(projected_points[0, 0]), int(projected_points[0, 1]))
-                x_axis = (int(projected_points[1, 0]), int(projected_points[1, 1]))
-                y_axis = (int(projected_points[2, 0]), int(projected_points[2, 1]))
-                z_axis = (int(projected_points[3, 0]), int(projected_points[3, 1]))
-                cv2.line(frame, origin, x_axis, self.get_display_color((0, 0, 255)), 3)
-                cv2.line(frame, origin, y_axis, self.get_display_color((0, 255, 0)), 3)
-                cv2.line(frame, origin, z_axis, self.get_display_color((255, 0, 0)), 3)
-                drew_face = True
-
-        if self.config.draw_homography_outline and self.homography is not None:
-            # self.reference_height, self.reference_width = self.warped_reference_img.shape[:2]
-            reference_corners = np.array(
-                [[0.0, 0.0], [self.reference_width - 1.0, 0.0], [self.reference_width - 1.0, self.reference_height - 1.0], [0.0, self.reference_height - 1.0]],
-                dtype=np.float32,
-            )
-            tracked_corners = cv2.perspectiveTransform(reference_corners.reshape(-1, 1, 2), self.homography).reshape(-1, 2)
-            if np.isfinite(tracked_corners).all():
-                tracked_corners = np.rint(tracked_corners).astype(int)
-                for index in range(4):
-                    start = tuple(tracked_corners[index])
-                    end = tuple(tracked_corners[(index + 1) % 4])
-                    cv2.line(frame, start, end, self.get_display_color((0, 255, 255)), 3)
-                drew_face = True
+        axis_points = np.array([(0.0, 0.0, 0.0), (4.0, 0.0, 0.0), (0.0, 4.0, 0.0), (0.0, 0.0, 4.0)], dtype=np.float32)
+        axis_points_camera = (rotation_matrix @ axis_points.T).T + translation_vector.reshape(1, 3)
+        if not np.isfinite(axis_points_camera).all() or np.any(axis_points_camera[:, 2] <= 1e-6):
+            return drew_face
+        projected_points, _ = cv2.projectPoints(axis_points, rotation_vector, translation_vector, camera_matrix, distortion_coefficients)
+        projected_points = projected_points.reshape(-1, 2)
+        if np.isfinite(projected_points).all():
+            projected_points = np.rint(projected_points).astype(np.int32)
+            origin = (int(projected_points[0, 0]), int(projected_points[0, 1]))
+            x_axis = (int(projected_points[1, 0]), int(projected_points[1, 1]))
+            y_axis = (int(projected_points[2, 0]), int(projected_points[2, 1]))
+            z_axis = (int(projected_points[3, 0]), int(projected_points[3, 1]))
+            cv2.line(frame, origin, x_axis, self.get_display_color((0, 0, 255)), 3)
+            cv2.line(frame, origin, y_axis, self.get_display_color((0, 255, 0)), 3)
+            cv2.line(frame, origin, z_axis, self.get_display_color((255, 0, 0)), 3)
+            drew_face = True
 
         return drew_face
 

@@ -81,7 +81,6 @@ def build_tracker_config():
             flow_max_error=20.0,
             flow_window_size=(21, 21),
             flow_max_level=3,
-            draw_homography_outline=False,
             straighten_z_on_front=True,
             straight_rotation_start_angle_degrees=5.0,
             straight_rotation_end_angle_degrees=10.0,
