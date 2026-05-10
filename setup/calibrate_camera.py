@@ -46,8 +46,7 @@ def main():
 
     print("Show a chessboard to the camera.")
     print("Press SPACE to capture a detected board.")
-    print("Press C to calibrate once you have enough captures.")
-    print("Press Q to quit.")
+    print("Press Q to calibrate and quit once you have enough captures.")
 
     while True:
         ret, frame = cap.read()
@@ -62,7 +61,7 @@ def main():
         found, corners = cv2.findChessboardCorners(gray, CHESSBOARD_SIZE)
 
         preview = frame.copy()
-        message = f"captures: {len(image_points)}/{MIN_CAPTURES} | SPACE: capture | SPACE: calibrate | Q: quit"
+        message = f"captures: {len(image_points)}/{MIN_CAPTURES} | SPACE: capture | Q: calibrate + quit"
 
         if found:
             refined_corners = cv2.cornerSubPix(
@@ -100,10 +99,10 @@ def main():
             image_points.append(refined_corners)
             print(f"Captured frame {len(image_points)}.")
 
-        if key in (ord("c"), ord("C")):
+        if key in (ord("q"), ord("Q")):
             if len(image_points) < MIN_CAPTURES:
-                print(f"Need at least {MIN_CAPTURES} captures before calibration.")
-                continue
+                print(f"Need at least {MIN_CAPTURES} captures before calibration. Closing without saving.")
+                break
 
             rms_error, camera_matrix, distortion_coefficients, _rvecs, _tvecs = cv2.calibrateCamera(
                 object_points,
@@ -127,9 +126,6 @@ def main():
             print(camera_matrix)
             print("Distortion coefficients:")
             print(distortion_coefficients.ravel())
-            break
-
-        if key in (ord("q"), ord("Q")):
             break
 
     cap.release()
