@@ -4,30 +4,41 @@ This project is a state-based box pose tracking system that combines multiple co
 robustness and tracking stability.
 
 The system first scans the camera feed and checks if ArUcos are present in the image. And then it switches between
-those 2 states:
-- ArUco(s) visible 
-- No ArUcos visible
+those 2 states.
 
-### 1. ArUco(s) visible
-It uses the ArUco markers to find the points used for solvePnP. 
-Since small or distant ArUcos can introduce noticeable jitter and cause the estimated box pose to shake, 
-the system additionally uses **ORB** or **Akaze** feature matching and **Optical Flow** tracking, to generate more 
-feature points for the *solvePnP* pose estimation step.
+```text
+Camera
+   ↓
+ArUco detection
+   ├── Yes → ORB/Akaze and Optical Flow refinement → solvePnP
+   └── No  → YOLO → ORB/Akaze and Optical Flow → solvePnP  
+   ↓
+Rotation stabilization
+   ↓
+Kalman filtering
+```
 
-### 1. No ArUcos visible
+### ArUco Tracking Mode
 
-If no ArUcos are visible, for example due to occlusion or because none of the visible sides of the box has markers, 
-the system switches to a fallback tracking mode using only **ORB** or **Akaze** and **Optical Flow** only. 
-Also, to make the feature mapping more stable, **YOLO** is used to first isolate 
-the box region from the background, since ORB/Akaze matching becomes significantly less stable in cluttered scenes.
-You'll see that you are in *No-ArUco-Mode*, when it says "0 Arucos" in the top left view, and also you'll notice
-that the frame rate (top right side of the screen) drops significantly.
+When ArUco markers are visible, they are used as the primary source for solvePnP pose estimation.
+Small or distant ArUcos can introduce noticeable jitter, so the system additionally uses **ORB/Akaze** 
+feature matching and **Optical Flow** tracking to generate additional feature points and improve pose stability.
 
-### Post Stabalizing solvePnP results
-In some situations, especially when the box is viewed almost perfectly planar to the camera, solvePnP can become unstable 
-and jump between 2 rotations. To reduce this effect, the system applies an additional stabilization step that blends the 
-estimated rotation toward horizontal, vertical, or both major axes when appropriate.  
-Finally, a Kalman filter is applied to smooth the resulting pose estimates and reduce short-term jitter in both position and rotation.
+### Fallback Tracking Mode (No ArUcos Visible)
+
+If no ArUcos are visible due to occlusion or markerless box sides, the system switches to a fallback 
+mode using only **ORB/Akaze** and **Optical Flow** tracking.
+To improve feature matching stability in cluttered scenes, **YOLO** is used to isolate the box 
+region from the background before feature extraction.  
+This mode is computationally heavier and results in lower frame rates.
+
+
+### Pose Stabilization
+
+When the box becomes nearly planar to the camera, solvePnP can become unstable and flip between two rotations.
+
+To reduce this effect, the system applies additional rotational stabilization before passing 
+the result through a **Kalman filter** to smooth short-term pose jitter.
 
 
 # How to use it on any box
