@@ -152,7 +152,7 @@ def main():
     )
     print (f'loading yolo model took {time.time() - time_before_load_detection_model} seconds.')
     print(detection_model.describe())
-    reference_column_width = max(reference.warped_reference_img.shape[1] for reference in all_planes)
+    reference_column_width = max(plane.warped_reference_img.shape[1] for plane in all_planes)
 
     input_source = config.app.input_source
     is_video_file = isinstance(input_source, (str, Path))
@@ -328,17 +328,17 @@ def main():
 
                     best_plane = None
                     stage_start = time.perf_counter()
-                    for p, reference in enumerate(all_planes):
-                        plane_confidence = reference.find_matches(frame_gray, combined_yolo_bounds)
+                    for p, plane in enumerate(all_planes):
+                        plane_confidence = plane.find_matches(frame_gray, combined_yolo_bounds)
                         if plane_confidence > 0.9:
                             add_timing(frame_timings, "match", stage_start)
                             stage_start = time.perf_counter()
-                            found_pose = reference.estimate_pose_from_matches(active_camera_matrix, active_distortion_coefficients)
+                            found_pose = plane.estimate_pose_from_matches(active_camera_matrix, active_distortion_coefficients)
                             add_timing(frame_timings, "pose", stage_start)
                             if found_pose:
                                 if p != 0:
                                     all_planes.insert(0, all_planes.pop(p))
-                                best_plane = reference
+                                best_plane = plane
                                 best_plane_confidence = plane_confidence
                                 break
                             stage_start = time.perf_counter()
@@ -376,8 +376,8 @@ def main():
         if not config.app.skip_tracking:
             if best_plane is not None:
                 stage_start = time.perf_counter()
-                for reference in all_planes:
-                    reference.draw(
+                for plane in all_planes:
+                    plane.draw(
                         frame_preview,
                         active_camera_matrix,
                         active_distortion_coefficients,
@@ -396,7 +396,7 @@ def main():
                     best_plane.draw(frame_preview, active_camera_matrix, active_distortion_coefficients, draw_axes=True)
 
                 frame_height, frame_width = frame_preview.shape[:2]
-                total_reference_height = sum(reference.get_scaled_reference_size(reference_column_width)[1] for reference in all_planes)
+                total_reference_height = sum(plane.get_scaled_reference_size(reference_column_width)[1] for plane in all_planes)
                 canvas_height = max(frame_height, total_reference_height)
                 canvas_width = reference_column_width + frame_width
                 frame_with_references = np.zeros((canvas_height, canvas_width, 3), dtype=np.uint8)
