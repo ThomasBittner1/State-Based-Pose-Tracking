@@ -23,7 +23,7 @@ class AppConfig:
     yolo_confidence: float = 0.1
     yolo_iou: float = 0.1
     yolo_input_size: int = 640
-    box_size: tuple[float, float, float] = (8.5, 14.0, 7.4)
+    box_size: tuple[float, float, float] = (8.500, 13.765, 7.673)
     calibration_path: Path = Path("calibration/camera.json")
     input_source: int | str | Path = 0
     start_frame: int = 60
@@ -124,9 +124,9 @@ def build_reference_planes(plane_tracking_config, box_size):
     )
 
     box_width = 10.0
-    box_depth =
-    box_height =
-    # left_plane.updateTransform((0, 0, box_width * 0.5), (box_depth, box_height))
+    box_height = box_width / front_plane.ratio
+    box_depth = box_height * right_plane.ratio
+    print (f'Estimated size is ({box_width:.3f}, {box_height:.3f}, {box_depth:.3f}')
 
     return [front_plane, left_plane, right_plane, back_plane], aruco_registry
 

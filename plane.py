@@ -139,9 +139,9 @@ class Plane:
         self.warp_and_update_reference(json_path)
 
     def get_scaled_reference_size(self, reference_column_width):
-        reference_height, reference_width = self.warped_reference_img.shape[:2]
-        scale = reference_column_width / max(1, reference_width)
-        scaled_height = max(1, int(round(reference_height * scale)))
+        self.reference_height, self.reference_width = self.warped_reference_img.shape[:2]
+        scale = reference_column_width / max(1, self.reference_width)
+        scaled_height = max(1, int(round(self.reference_height * scale)))
         return reference_column_width, scaled_height, scale
 
     def get_display_color(self, color):
@@ -174,6 +174,8 @@ class Plane:
 
         target_width = max(1, int(round(max(width_top, width_bottom))))
         target_height = max(1, int(round(max(height_left, height_right))))
+        self.ratio = target_width / target_height
+
         destination = np.array(
             [
                 [0.0, 0.0],
@@ -183,12 +185,15 @@ class Plane:
             ],
             dtype=np.float32,
         )
-
-        self.ratio = target_width / target_height
-
         transform = cv2.getPerspectiveTransform(ordered, destination)
         self.warped_reference_img = cv2.warpPerspective(image, transform, (target_width, target_height))
+        self.reference_height, self.reference_width = self.warped_reference_img.shape[:2]
+        self.reference_center_x = (self.reference_width - 1) * 0.5
+        self.reference_center_y = (self.reference_height - 1) * 0.5
+        self.create_measurements()
 
+
+    def create_measurements(self):
         self.four_corner_points_3d = np.array(
             [
                 (-self.world_size[0] * 0.5, -self.world_size[1] * 0.5, 0.0),
@@ -198,12 +203,8 @@ class Plane:
             ],
             dtype=np.float32,
         )
-
-        reference_height, reference_width = self.warped_reference_img.shape[:2]
-        width_scale = self.world_size[0] / max(1.0, float(reference_width - 1))
-        height_scale = self.world_size[1] / max(1.0, float(reference_height - 1))
-        center_x = (reference_width - 1) * 0.5
-        center_y = (reference_height - 1) * 0.5
+        width_scale = self.world_size[0] / max(1.0, float(self.reference_width - 1))
+        height_scale = self.world_size[1] / max(1.0, float(self.reference_height - 1))
 
         mirrored_warped_reference_img = cv2.flip(self.warped_reference_img, 1)
         for dictionary_name in self.aruco_registry.dictionaries:
@@ -213,8 +214,8 @@ class Plane:
                     points_3d = np.array(
                         [
                             [
-                                width_scale - (corner[0] - center_x) * width_scale,
-                                (corner[1] - center_y) * height_scale,
+                                width_scale - (corner[0] - self.reference_center_x) * width_scale,
+                                (corner[1] - self.reference_center_y) * height_scale,
                                 0.0,
                             ]
                             for corner in marker_corners[0]
@@ -244,7 +245,7 @@ class Plane:
             raise RuntimeError("Could not extract features from reference image")
         self.reference_points_3d = np.array(
             [
-                [(keypoint.pt[0] - center_x) * width_scale, (keypoint.pt[1] - center_y) * height_scale, 0.0]
+                [(keypoint.pt[0] - self.reference_center_x) * width_scale, (keypoint.pt[1] - self.reference_center_y) * height_scale, 0.0]
                 for keypoint in self.reference_keypoints
             ],
             dtype=np.float32,
@@ -520,9 +521,9 @@ class Plane:
                 cv2.line(frame, origin, z_axis, self.get_display_color((255, 0, 0)), 3)
 
         if self.config.draw_homography_outline and self.homography is not None:
-            reference_height, reference_width = self.warped_reference_img.shape[:2]
+            # self.reference_height, self.reference_width = self.warped_reference_img.shape[:2]
             reference_corners = np.array(
-                [[0.0, 0.0], [reference_width - 1.0, 0.0], [reference_width - 1.0, reference_height - 1.0], [0.0, reference_height - 1.0]],
+                [[0.0, 0.0], [self.reference_width - 1.0, 0.0], [self.reference_width - 1.0, self.reference_height - 1.0], [0.0, self.reference_height - 1.0]],
                 dtype=np.float32,
             )
             tracked_corners = cv2.perspectiveTransform(reference_corners.reshape(-1, 1, 2), self.homography).reshape(-1, 2)
