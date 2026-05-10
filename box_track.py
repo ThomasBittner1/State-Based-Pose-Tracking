@@ -8,10 +8,10 @@ import numpy as np
 
 
 import camera
-import drawing_utils
-import geometry_utils
-import reference_plane
-import yolo_utils
+import drawing
+import geometry
+import plane
+import yolo
 
 
 WINDOW_NAME = "Box Tracker"
@@ -40,7 +40,7 @@ class AppConfig:
 @dataclass
 class TrackerConfig:
     app: AppConfig
-    plane_tracking: reference_plane.PlaneTrackingConfig
+    plane_tracking: plane.PlaneTrackingConfig
 
 
 def draw_frame_number(frame, frame_rate=None, frame_number=None):
@@ -58,8 +58,8 @@ def draw_frame_number(frame, frame_rate=None, frame_number=None):
 def build_tracker_config():
     return TrackerConfig(
         app=AppConfig(),
-        plane_tracking=reference_plane.PlaneTrackingConfig(
-            feature_detector=reference_plane.FeatureDetector.ORB,
+        plane_tracking=plane.PlaneTrackingConfig(
+            feature_detector=plane.FeatureDetector.ORB,
             bruteforce_matcher=True,
             min_match_count=8,
             ransac_threshold=4.0,
@@ -77,10 +77,10 @@ def build_tracker_config():
 
 def build_reference_planes(plane_tracking_config, box_size):
     box_width, box_height, box_depth = box_size
-    aruco_registry = reference_plane.ArucoRegistry()
-    pose_history = reference_plane.PoseHistory()
+    aruco_registry = plane.ArucoRegistry()
+    pose_history = plane.PoseHistory()
 
-    left_plane = reference_plane.Plane(
+    left_plane = plane.Plane(
         'left',
         './captures/left.json',
         aruco_registry,
@@ -91,7 +91,7 @@ def build_reference_planes(plane_tracking_config, box_size):
         world_size=(box_depth, box_height),
         display_color_multiplier=0.5,
     )
-    right_plane = reference_plane.Plane(
+    right_plane = plane.Plane(
         'right',
         './captures/right.json',
         aruco_registry,
@@ -102,7 +102,7 @@ def build_reference_planes(plane_tracking_config, box_size):
         world_size=(box_depth, box_height),
         display_color_multiplier=0.5,
     )
-    front_plane = reference_plane.Plane(
+    front_plane = plane.Plane(
         'front',
         './captures/front.json',
         aruco_registry,
@@ -112,7 +112,7 @@ def build_reference_planes(plane_tracking_config, box_size):
         translation_offset=(0, 0, box_depth * 0.5),
         world_size=(box_width, box_height),
     )
-    back_plane = reference_plane.Plane(
+    back_plane = plane.Plane(
         'back',
         './captures/back.json',
         aruco_registry,
@@ -129,7 +129,7 @@ def main():
     config = build_tracker_config()
     all_planes, aruco_registry = build_reference_planes(config.plane_tracking, config.app.box_size)
     time_before_load_detection_model = time.time()
-    detection_model = yolo_utils.load_detection_model(
+    detection_model = yolo.load_detection_model(
         config.app.model_path,
         config.app.yolo_confidence,
         config.app.yolo_iou,
@@ -137,7 +137,7 @@ def main():
     )
     print (f'loading yolo model took {time.time() - time_before_load_detection_model} seconds.')
     print(detection_model.describe())
-    reference_column_width = max(plane.warped_reference_img.shape[1] for plane in all_planes)
+    reference_column_width = max(reference.warped_reference_img.shape[1] for reference in all_planes)
 
     input_source = config.app.input_source
     is_video_file = isinstance(input_source, (str, Path))
@@ -160,7 +160,7 @@ def main():
     debug_view = False
     recent_yolo_bounds = []
     blended_pose_result = None
-    pose_kalman_filter = geometry_utils.PoseKalmanFilter(enabled=config.app.enable_pose_kalman)
+    pose_kalman_filter = geometry.PoseKalmanFilter(enabled=config.app.enable_pose_kalman)
     filtered_pose_plane_name = None
 
     detections = []
@@ -172,7 +172,7 @@ def main():
         print("Error: Failed to read initial frame from webcam.")
         cap.release()
         sys.exit(1)
-    frame = geometry_utils.crop_frame_to_width(frame, config.app.output_frame_width)
+    frame = geometry.crop_frame_to_width(frame, config.app.output_frame_width)
     print(f"Working resolution: {frame.shape[1]}x{frame.shape[0]}")
 
     fps = float(cap.get(cv2.CAP_PROP_FPS))
@@ -214,7 +214,7 @@ def main():
                     print("Error: Failed to read frame from webcam.")
                     break
                 current_frame_number += 1
-                frame = geometry_utils.crop_frame_to_width(frame, config.app.output_frame_width)
+                frame = geometry.crop_frame_to_width(frame, config.app.output_frame_width)
                 if movie_writer is not None:
                     movie_writer.write(frame)
             unflipped_frame = np.copy(frame)
@@ -294,21 +294,21 @@ def main():
 
                 else: # no aruco found
                     detections = detection_model.predict(frame)
-                    best_yolo_detection = yolo_utils.select_best_yolo_detection(detections)
+                    best_yolo_detection = yolo.select_best_yolo_detection(detections)
                     if best_yolo_detection is not None:
                         recent_yolo_bounds.append(best_yolo_detection["bounds"])
                         recent_yolo_bounds = recent_yolo_bounds[-config.plane_tracking.yolo_bounds_history_size:]
-                    combined_yolo_bounds = geometry_utils.combine_detection_bounds(recent_yolo_bounds, frame.shape)
+                    combined_yolo_bounds = geometry.combine_detection_bounds(recent_yolo_bounds, frame.shape)
 
                     best_plane = None
-                    for p, plane in enumerate(all_planes):
-                        plane_confidence = plane.find_matches(frame_gray, combined_yolo_bounds)
+                    for p, reference in enumerate(all_planes):
+                        plane_confidence = reference.find_matches(frame_gray, combined_yolo_bounds)
                         if plane_confidence > 0.9:
-                            found_pose = plane.estimate_pose_from_matches(active_camera_matrix, active_distortion_coefficients)
+                            found_pose = reference.estimate_pose_from_matches(active_camera_matrix, active_distortion_coefficients)
                             if found_pose:
                                 if p != 0:
                                     all_planes.insert(0, all_planes.pop(p))
-                                best_plane = plane
+                                best_plane = reference
                                 best_plane_confidence = plane_confidence
                                 break
 
@@ -323,7 +323,7 @@ def main():
                         filtered_pose_plane_name = best_plane.name
                     current_pose_blend = float(np.interp(best_plane_confidence, [0.0, 0.5, 0.65, 1.0], [0.0, 0.0, 1.0, 1.0]))
                     filtered_pose_result = pose_kalman_filter.filter_pose(best_plane.pose_result)
-                    blended_pose_result = geometry_utils.blend_pose_result(blended_pose_result, filtered_pose_result, current_pose_blend)
+                    blended_pose_result = geometry.blend_pose_result(blended_pose_result, filtered_pose_result, current_pose_blend)
                 else:
                     filtered_pose_plane_name = None
 
@@ -345,7 +345,7 @@ def main():
 
         if not config.app.skip_tracking:
             if best_plane is not None:
-                drawing_utils.draw_box_overlay(frame_preview,
+                drawing.draw_box_overlay(frame_preview,
                                                active_camera_matrix,
                                                active_distortion_coefficients,
                                                blended_pose_result,
@@ -355,12 +355,12 @@ def main():
             cv2.putText(frame_preview, f"fps: {averaged_fps:.1f}", text_origin, cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 255), 2, cv2.LINE_AA)
 
             if debug_view:
-                yolo_utils.draw_yolo_overlay(frame_preview, detections, combined_bounds=combined_yolo_bounds)
+                yolo.draw_yolo_overlay(frame_preview, detections, combined_bounds=combined_yolo_bounds)
                 if best_plane is not None:
                     best_plane.draw(frame_preview, active_camera_matrix, active_distortion_coefficients)
 
                 frame_height, frame_width = frame_preview.shape[:2]
-                total_reference_height = sum(plane.get_scaled_reference_size(reference_column_width)[1] for plane in all_planes)
+                total_reference_height = sum(reference.get_scaled_reference_size(reference_column_width)[1] for reference in all_planes)
                 canvas_height = max(frame_height, total_reference_height)
                 canvas_width = reference_column_width + frame_width
                 frame_with_references = np.zeros((canvas_height, canvas_width, 3), dtype=np.uint8)

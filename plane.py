@@ -7,8 +7,8 @@ import json
 import cv2
 import numpy as np
 
-import drawing_utils
-import geometry_utils
+import drawing
+import geometry
 
 
 SUPPORTED_ARUCO_DICTIONARIES = {
@@ -96,7 +96,7 @@ class PoseHistory:
             return True
 
         for previous_rotation_matrix in self.rotation_matrices:
-            rotation_similarity = geometry_utils.rotation_matrix_similarity(previous_rotation_matrix, rotation_matrix)
+            rotation_similarity = geometry.rotation_matrix_similarity(previous_rotation_matrix, rotation_matrix)
             if rotation_similarity > self.min_similarity:
                 self.rotation_matrices = [rotation_matrix]
                 return True
@@ -164,7 +164,7 @@ class Plane:
         if image is None:
             raise FileNotFoundError(f"Could not open image: {image_path}")
 
-        ordered = geometry_utils.order_rectangle_points(rectangle_points)
+        ordered = geometry.order_rectangle_points(rectangle_points)
         top_left, top_right, bottom_right, bottom_left = ordered
 
         width_top = np.linalg.norm(top_right - top_left)
@@ -382,7 +382,7 @@ class Plane:
 
         self.inlier_matches = [match for match, keep in zip(self.good_matches, self.inlier_mask) if keep] if self.inlier_mask else []
 
-        homography_confidence = geometry_utils.rate_homography(self.homography)
+        homography_confidence = geometry.rate_homography(self.homography)
 
         if self.inlier_matches and homography_confidence > 0.9:
             points_3d = np.array([self.reference_points_3d[match.queryIdx] for match in self.inlier_matches], dtype=np.float32)
@@ -411,7 +411,7 @@ class Plane:
         if success and frame_debug is not None:
             debug_colors = ((255, 255, 255), (255, 255, 255))
             for pose_index, (rotation_vector, translation_vector) in enumerate(zip(rotation_vectors[:2], translation_vectors[:2])):
-                drawing_utils.draw_pose_axes_overlay(
+                drawing.draw_pose_axes_overlay(
                     frame_debug,
                     camera_matrix,
                     distortion_coefficients,
