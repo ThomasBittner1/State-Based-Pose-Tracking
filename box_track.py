@@ -8,7 +8,6 @@ import numpy as np
 
 
 import camera
-import drawing
 import geometry
 import plane
 import yolo
@@ -378,13 +377,16 @@ def main():
         if not config.app.skip_tracking:
             if best_plane is not None:
                 stage_start = time.perf_counter()
-                drawing.draw_box_overlay(frame_preview,
-                                               active_camera_matrix,
-                                               active_distortion_coefficients,
-                                               blended_pose_result,
-                                               all_planes,
-                                               opacity=box_overlay_opacity,
-                                               draw_labels=config.app.draw_face_labels)
+                for reference in all_planes:
+                    reference.draw(
+                        frame_preview,
+                        active_camera_matrix,
+                        active_distortion_coefficients,
+                        pose_result=blended_pose_result,
+                        opacity=box_overlay_opacity,
+                        draw_label=config.app.draw_face_labels,
+                        skip_if_not_visible=True,
+                    )
                 add_timing(frame_timings, "draw_box", stage_start)
             text_origin = (frame_preview.shape[1] - fps_text_width - 20, 20 + fps_text_height)
             cv2.putText(frame_preview, f"fps: {averaged_fps:.1f}", text_origin, cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 255), 2, cv2.LINE_AA)
@@ -392,7 +394,7 @@ def main():
             if debug_view:
                 yolo.draw_yolo_overlay(frame_preview, detections, combined_bounds=combined_yolo_bounds)
                 if best_plane is not None:
-                    best_plane.draw(frame_preview, active_camera_matrix, active_distortion_coefficients)
+                    best_plane.draw(frame_preview, active_camera_matrix, active_distortion_coefficients, draw_axes=True)
 
                 frame_height, frame_width = frame_preview.shape[:2]
                 total_reference_height = sum(reference.get_scaled_reference_size(reference_column_width)[1] for reference in all_planes)
