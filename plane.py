@@ -614,8 +614,6 @@ class Plane:
         if not isinstance(pose_result, tuple) or len(pose_result) != 2:
             return False
         opacity = float(np.clip(opacity, 0.0, 1.0))
-        if opacity <= 0.0:
-            return False
 
         rotation_vector, translation_vector = pose_result
         rotation_matrix, _ = cv2.Rodrigues(rotation_vector)
@@ -623,8 +621,6 @@ class Plane:
 
         if draw_axes:
             axis_points = np.array([(0.0, 0.0, 0.0), (4.0, 0.0, 0.0), (0.0, 4.0, 0.0), (0.0, 0.0, 4.0)], dtype=np.float32)
-            axis_points_camera = (rotation_matrix @ axis_points.T).T + translation_vector.reshape(1, 3)
-
             projected_points, _ = cv2.projectPoints(axis_points, rotation_vector, translation_vector, camera_matrix, distortion_coefficients)
             projected_points = projected_points.reshape(-1, 2)
             if np.isfinite(projected_points).all():
