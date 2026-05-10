@@ -65,8 +65,12 @@ Specify that model in the app config's **model_path**, supported model types are
 
 ### Camera Calibration
 
-Camera Calibration is not mandatory either, but it can help the results. To do that, put the *setup/calibrate_pattern.png*
-image on an iPad or a printed hard paper (don't use a paper that changes form), and run:
+Camera Calibration is not mandatory either, but it can help the results. To start, put the *setup/calibrate_pattern.png*
+image on an iPad or print it on a flat, rigid surface (thick paper, cardboard, or plastic, don't use a 
+paper that changes form), and run:
+
+
+
 ``` bash
 python setup/calibrate_camera.py
 ```
@@ -78,7 +82,7 @@ When you hit q, he calculates the calibration from your images, and saves it int
 # Challenges
 Feature mapping with ORB/Akaze is extremely messy, and SolvePnP is sensitive. Alone a tiny jittering from ArUcos 
 can produce an agressive jumping on the whole box.  
-And adding more and more checks and stabalizing systems makes the evaluation speed suffer quickly. The biggest
+And adding more and more checks and stabalizing systems mades the evaluation speed suffer quickly. The biggest
 bottleneck is checking/verifying homography on the ORB/Akaze features.
 
 

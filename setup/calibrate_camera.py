@@ -1,13 +1,5 @@
-from pathlib import Path
-import sys
-
 import cv2
 import numpy as np
-
-
-PROJECT_ROOT = Path(__file__).resolve().parents[1]
-if str(PROJECT_ROOT) not in sys.path:
-    sys.path.insert(0, str(PROJECT_ROOT))
 
 import camera
 
@@ -16,8 +8,7 @@ CAMERA_INDEX = 0
 CHESSBOARD_SIZE = (9, 6)
 SQUARE_SIZE = 1.0
 MIN_CAPTURES = 12
-OUTPUT_PATH = PROJECT_ROOT / "calibration" / "camera.json"
-PREVIEW_WINDOW = "Camera Calibration"
+OUTPUT_PATH = "calibration/camera.json"
 SPACE_KEY = 32
 
 
@@ -86,7 +77,7 @@ def main():
             2,
             cv2.LINE_AA,
         )
-        cv2.imshow(PREVIEW_WINDOW, preview)
+        cv2.imshow("Camera Calibration", preview)
 
         key = cv2.waitKey(1) & 0xFF
 
