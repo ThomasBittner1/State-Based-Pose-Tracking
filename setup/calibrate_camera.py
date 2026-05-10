@@ -1,5 +1,13 @@
+from pathlib import Path
+import sys
+
 import cv2
 import numpy as np
+
+
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
 
 import camera
 
@@ -8,7 +16,7 @@ CAMERA_INDEX = 0
 CHESSBOARD_SIZE = (9, 6)
 SQUARE_SIZE = 1.0
 MIN_CAPTURES = 12
-OUTPUT_PATH = "calibration/camera.json"
+OUTPUT_PATH = PROJECT_ROOT / "calibration" / "camera.json"
 SPACE_KEY = 32
 
 
@@ -46,6 +54,8 @@ def main():
         if not ret:
             print("Error: Failed to read frame from webcam.")
             break
+
+        cv2.flip(frame, 1, frame)
 
         image_size = (frame.shape[1], frame.shape[0])
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
