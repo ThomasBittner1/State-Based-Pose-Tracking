@@ -159,3 +159,15 @@ def order_rectangle_points(rectangle_points):
     ordered[1] = rectangle_points[np.argmin(diffs)]
     ordered[3] = rectangle_points[np.argmax(diffs)]
     return ordered
+
+
+def is_face_visible(face_points, face_points_camera):
+    p0, p1, p2 = face_points[:3]
+    normal_box = np.cross(p1 - p0, p2 - p0)
+    face_center_box = np.mean(face_points, axis=0)
+    p0_camera, p1_camera, p2_camera = face_points_camera[:3]
+    normal = np.cross(p1_camera - p0_camera, p2_camera - p0_camera)
+    if np.dot(normal_box, face_center_box) < 0.0:
+        normal = -normal
+    face_center = np.mean(face_points_camera, axis=0)
+    return np.dot(normal, face_center) < 0.0

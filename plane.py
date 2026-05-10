@@ -204,18 +204,6 @@ class Plane:
         plane_corners = np.asarray(self.four_corner_points_3d, dtype=np.float64)
         return ((plane_corners - translation_offset) @ rotation_offset).astype(np.float32)
 
-    @staticmethod
-    def is_face_visible(face_points, face_points_camera):
-        p0, p1, p2 = face_points[:3]
-        normal_box = np.cross(p1 - p0, p2 - p0)
-        face_center_box = np.mean(face_points, axis=0)
-        p0_camera, p1_camera, p2_camera = face_points_camera[:3]
-        normal = np.cross(p1_camera - p0_camera, p2_camera - p0_camera)
-        if np.dot(normal_box, face_center_box) < 0.0:
-            normal = -normal
-        face_center = np.mean(face_points_camera, axis=0)
-        return np.dot(normal, face_center) < 0.0
-
     def get_scaled_reference_size(self, reference_column_width):
         self.reference_height, self.reference_width = self.warped_reference_img.shape[:2]
         scale = reference_column_width / max(1, self.reference_width)
@@ -618,8 +606,8 @@ class Plane:
         face_points_camera = (rotation_matrix @ face_points.T).T + translation_vector
 
         if np.isfinite(face_points_camera).all() and not np.any(face_points_camera[:, 2] <= 1e-6):
-            is_visible = self.is_face_visible(face_points, face_points_camera)
-            if is_visible or not skip_if_not_visible:
+            if (geometry.is_face_visible(face_points, face_points_camera) or
+                    not skip_if_not_visible):
                 projected_points, _ = cv2.projectPoints(
                     face_points,
                     rotation_vector,
