@@ -162,13 +162,13 @@ class Plane:
         LABEL_MASK_CACHE[cache_key] = text_mask
         return text_mask
 
-    def _draw_face_label(self, frame, destination_quad, face_width, face_height):
-        if abs(cv2.contourArea(destination_quad.astype(np.float32))) < 64.0:
+    def _draw_face_label(self, frame, face_points, face_width, face_height):
+        if abs(cv2.contourArea(face_points.astype(np.float32))) < 64.0:
             return
-        min_x = max(0, int(np.floor(np.min(destination_quad[:, 0]))) - 2)
-        min_y = max(0, int(np.floor(np.min(destination_quad[:, 1]))) - 2)
-        max_x = min(frame.shape[1], int(np.ceil(np.max(destination_quad[:, 0]))) + 3)
-        max_y = min(frame.shape[0], int(np.ceil(np.max(destination_quad[:, 1]))) + 3)
+        min_x = max(0, int(np.floor(np.min(face_points[:, 0]))) - 2)
+        min_y = max(0, int(np.floor(np.min(face_points[:, 1]))) - 2)
+        max_x = min(frame.shape[1], int(np.ceil(np.max(face_points[:, 0]))) + 3)
+        max_y = min(frame.shape[0], int(np.ceil(np.max(face_points[:, 1]))) + 3)
         if max_x <= min_x or max_y <= min_y:
             return
 
@@ -182,8 +182,8 @@ class Plane:
             ],
             dtype=np.float32,
         )
-        local_destination_quad = destination_quad.astype(np.float32) - np.array([min_x, min_y], dtype=np.float32)
-        homography = cv2.getPerspectiveTransform(source_quad, local_destination_quad)
+        local_face_points = face_points.astype(np.float32) - np.array([min_x, min_y], dtype=np.float32)
+        homography = cv2.getPerspectiveTransform(source_quad, local_face_points)
         roi_size = (max_x - min_x, max_y - min_y)
         warped_text = cv2.warpPerspective(
             text_mask,
