@@ -165,12 +165,6 @@ class Plane:
         LABEL_MASK_CACHE[cache_key] = outline_mask, fill_mask
         return outline_mask, fill_mask
 
-    @staticmethod
-    def _blend_mask(frame, mask, color):
-        alpha = (mask.astype(np.float32) / 255.0)[:, :, None]
-        color_array = np.asarray(color, dtype=np.float32).reshape(1, 1, 3)
-        frame[:] = (frame.astype(np.float32) * (1.0 - alpha) + color_array * alpha).astype(np.uint8)
-
     @classmethod
     def _draw_face_label(cls, frame, label, destination_quad, face_width, face_height):
         if abs(cv2.contourArea(destination_quad.astype(np.float32))) < 64.0:
@@ -212,8 +206,8 @@ class Plane:
             borderValue=0,
         )
         frame_roi = frame[min_y:max_y, min_x:max_x]
-        cls._blend_mask(frame_roi, warped_outline, (0, 0, 0))
-        cls._blend_mask(frame_roi, warped_fill, (255, 255, 255))
+        frame_roi[warped_outline > 0] = (0, 0, 0)
+        frame_roi[warped_fill > 0] = (255, 255, 255)
 
     def get_corners_in_box_coordinates(self):
         rotation_offset = np.asarray(self.rotation_offset, dtype=np.float64)
@@ -604,7 +598,6 @@ class Plane:
         camera_matrix,
         distortion_coefficients,
         pose_result=None,
-        opacity=1.0,
         draw_label=True,
         draw_axes=False,
         skip_if_not_visible=False,
@@ -613,7 +606,6 @@ class Plane:
             pose_result = self.pose_result
         if not isinstance(pose_result, tuple) or len(pose_result) != 2:
             return False
-        opacity = float(np.clip(opacity, 0.0, 1.0))
 
         rotation_vector, translation_vector = pose_result
         rotation_matrix, _ = cv2.Rodrigues(rotation_vector)
@@ -648,14 +640,12 @@ class Plane:
                 )
                 projected_points = projected_points.reshape(-1, 2)
                 if np.isfinite(projected_points).all():
-                    overlay = np.copy(frame)
                     polygon = np.rint(projected_points).astype(np.int32)
-                    cv2.polylines(overlay, [polygon], isClosed=True, color=(255, 255, 255), thickness=3, lineType=cv2.LINE_AA)
+                    cv2.polylines(frame, [polygon], isClosed=True, color=(255, 255, 255), thickness=3, lineType=cv2.LINE_AA)
                     if draw_label:
                         face_width = float(np.linalg.norm(face_points[1] - face_points[0]))
                         face_height = float(np.linalg.norm(face_points[3] - face_points[0]))
-                        self._draw_face_label(overlay, self.name, projected_points, face_width, face_height)
-                    cv2.addWeighted(overlay, opacity, frame, 1.0 - opacity, 0.0, frame)
+                        self._draw_face_label(frame, self.name, projected_points, face_width, face_height)
 
 
 

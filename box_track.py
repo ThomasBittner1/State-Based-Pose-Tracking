@@ -180,7 +180,6 @@ def main():
 
     detections = []
     combined_yolo_bounds = None
-    box_overlay_opacity = 1.0
 
     ret, frame = cap.read()
     if not ret:
@@ -382,7 +381,6 @@ def main():
                         active_camera_matrix,
                         active_distortion_coefficients,
                         pose_result=blended_pose_result,
-                        opacity=box_overlay_opacity,
                         draw_label=config.app.draw_face_labels,
                         skip_if_not_visible=True,
                     )
