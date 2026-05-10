@@ -32,10 +32,10 @@ class AppConfig:
     enable_pose_kalman: bool = True
     draw_face_labels: bool = True
 
-    timing_log_interval: int = 60
-    record_webcam: bool = False
-    recording_path: Path = Path("recorded_001.mp4")
-    print_timing: bool = False
+    debug_timing_log_interval: int = 60
+    debug_record_webcam: bool = False
+    debug_recording_path: Path = Path("recorded_001.mp4")
+    debug_print_timing: bool = False
 
 
 @dataclass
@@ -169,11 +169,11 @@ def main():
     if fps <= 0.0 or not np.isfinite(fps):
         fps = config.app.default_fps
 
-    if config.app.record_webcam and isinstance(input_source, int):
+    if config.app.debug_record_webcam and isinstance(input_source, int):
         frame_height, frame_width = frame.shape[:2]
-        movie_writer = cv2.VideoWriter(str(config.app.recording_path), cv2.VideoWriter_fourcc(*"mp4v"), fps, (frame_width, frame_height))
+        movie_writer = cv2.VideoWriter(str(config.app.debug_recording_path), cv2.VideoWriter_fourcc(*"mp4v"), fps, (frame_width, frame_height))
         if not movie_writer.isOpened():
-            print(f"Error: Could not open movie writer for {config.app.recording_path}.")
+            print(f"Error: Could not open movie writer for {config.app.debug_recording_path}.")
             cap.release()
             sys.exit(1)
         movie_writer.write(frame)
@@ -393,7 +393,7 @@ def main():
         for timing_name, duration_ms in frame_timings.items():
             timing_history[timing_name].append(duration_ms)
         frame_count += 1
-        if config.app.print_timing and frame_count % config.app.timing_log_interval == 0:
+        if config.app.debug_print_timing and frame_count % config.app.debug_timing_log_interval == 0:
             timing_summary = format_timing_summary(timing_history)
             if timing_summary:
                 print(timing_summary)
