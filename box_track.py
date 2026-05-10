@@ -34,6 +34,9 @@ class AppConfig:
     timing_average_window: int = 10
     skip_tracking: bool = False
     enable_pose_kalman: bool = True
+    draw_face_labels: bool = True
+    print_timing: bool = False
+    timing_log_interval: int = 60
 
 
 @dataclass
@@ -52,6 +55,20 @@ def draw_frame_number(frame, frame_rate=None, frame_number=None):
     text_origin = (frame.shape[1] - text_width - 20, 20 + text_height)
     cv2.putText(frame, frame_text, text_origin, cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 255), 2, cv2.LINE_AA)
     cv2.putText(frame, frame_text, text_origin, cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 0, 0), 1, cv2.LINE_AA)
+
+
+def add_timing(frame_timings, name, start_time):
+    duration_ms = (time.perf_counter() - start_time) * 1000.0
+    frame_timings[name] = frame_timings.get(name, 0.0) + duration_ms
+
+
+def format_timing_summary(timing_history):
+    parts = []
+    for name in ("yolo", "match", "pose", "draw_box", "frame"):
+        samples = timing_history.get(name)
+        if samples:
+            parts.append(f"{name}: {np.mean(samples):.1f} ms")
+    return " | ".join(parts)
 
 
 def build_tracker_config():
@@ -122,12 +139,12 @@ def build_reference_planes(plane_tracking_config):
     right_plane.compute_feature_correspondences((box_depth, box_height),
                                                 rotation_offset=[[0, 0, -1], [0, 1, 0], [1, 0, 0]], translation_offset=(0, 0, box_width * 0.5))
 
-    return [front_plane, left_plane, right_plane, back_plane], aruco_registry, box_size
+    return [front_plane, left_plane, right_plane, back_plane], aruco_registry
 
 
 def main():
     config = build_tracker_config()
-    all_planes, aruco_registry, box_size = build_reference_planes(config.plane_tracking)
+    all_planes, aruco_registry = build_reference_planes(config.plane_tracking)
     time_before_load_detection_model = time.time()
     detection_model = yolo.load_detection_model(
         config.app.model_path,
@@ -199,11 +216,14 @@ def main():
     use_current_frame = True
     step_once = False
     recent_fps_values = deque(maxlen=config.app.timing_average_window)
+    timing_history = defaultdict(lambda: deque(maxlen=config.app.timing_average_window))
+    frame_count = 0
 
     (fps_text_width, fps_text_height), _ = cv2.getTextSize("fps 000.0", cv2.FONT_HERSHEY_SIMPLEX, 0.8, 2)
 
     while True:
         loop_start_time = time.perf_counter()
+        frame_timings = {}
 
         if not paused or step_once:
             if use_current_frame:
@@ -264,6 +284,7 @@ def main():
                     best_plane.points_2d = np.concatenate([a.last_corners for a in best_arucos])
                     best_plane_confidence = 1.0
 
+                    stage_start = time.perf_counter()
                     success, rotation_vectors, translation_vectors, _ = cv2.solvePnPGeneric(
                         best_plane.points_3d,
                         best_plane.points_2d,
@@ -287,30 +308,44 @@ def main():
                             int(np.max(projected_corner_points[:, 0])),
                             int(np.max(projected_corner_points[:, 1])),
                         )
+                    add_timing(frame_timings, "pose", stage_start)
 
+                    stage_start = time.perf_counter()
                     best_plane.find_matches(frame_gray, projected_bounds, concat_points=True)
+                    add_timing(frame_timings, "match", stage_start)
                     best_plane_confidence = 1.0
+                    stage_start = time.perf_counter()
                     best_plane.estimate_pose_from_matches(active_camera_matrix, active_distortion_coefficients) #, frame_debug=frame_preview)
+                    add_timing(frame_timings, "pose", stage_start)
 
                 else: # no aruco found
+                    stage_start = time.perf_counter()
                     detections = detection_model.predict(frame)
                     best_yolo_detection = yolo.select_best_yolo_detection(detections)
+                    add_timing(frame_timings, "yolo", stage_start)
                     if best_yolo_detection is not None:
                         recent_yolo_bounds.append(best_yolo_detection["bounds"])
                         recent_yolo_bounds = recent_yolo_bounds[-config.plane_tracking.yolo_bounds_history_size:]
                     combined_yolo_bounds = geometry.combine_detection_bounds(recent_yolo_bounds, frame.shape)
 
                     best_plane = None
+                    stage_start = time.perf_counter()
                     for p, reference in enumerate(all_planes):
                         plane_confidence = reference.find_matches(frame_gray, combined_yolo_bounds)
                         if plane_confidence > 0.9:
+                            add_timing(frame_timings, "match", stage_start)
+                            stage_start = time.perf_counter()
                             found_pose = reference.estimate_pose_from_matches(active_camera_matrix, active_distortion_coefficients)
+                            add_timing(frame_timings, "pose", stage_start)
                             if found_pose:
                                 if p != 0:
                                     all_planes.insert(0, all_planes.pop(p))
                                 best_plane = reference
                                 best_plane_confidence = plane_confidence
                                 break
+                            stage_start = time.perf_counter()
+                    else:
+                        add_timing(frame_timings, "match", stage_start)
 
                 step_once = False
                 if pause_after_first_frame:
@@ -338,19 +373,19 @@ def main():
 
         # draw everything
         #
-        loop_duration = max(time.perf_counter() - loop_start_time, 1e-6)
-        instantaneous_fps = 1.0 / loop_duration
-        recent_fps_values.append(instantaneous_fps)
-        averaged_fps = float(np.mean(recent_fps_values)) if recent_fps_values else None
+        averaged_fps = float(np.mean(recent_fps_values)) if recent_fps_values else 0.0
 
         if not config.app.skip_tracking:
             if best_plane is not None:
+                stage_start = time.perf_counter()
                 drawing.draw_box_overlay(frame_preview,
                                                active_camera_matrix,
                                                active_distortion_coefficients,
                                                blended_pose_result,
-                                               box_size,
-                                               opacity=box_overlay_opacity)
+                                               all_planes,
+                                               opacity=box_overlay_opacity,
+                                               draw_labels=config.app.draw_face_labels)
+                add_timing(frame_timings, "draw_box", stage_start)
             text_origin = (frame_preview.shape[1] - fps_text_width - 20, 20 + fps_text_height)
             cv2.putText(frame_preview, f"fps: {averaged_fps:.1f}", text_origin, cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 255), 2, cv2.LINE_AA)
 
@@ -375,6 +410,18 @@ def main():
                 cv2.imshow(WINDOW_NAME, frame_preview)
         else:
             cv2.imshow(WINDOW_NAME, frame_preview)
+
+        add_timing(frame_timings, "frame", loop_start_time)
+        frame_duration_ms = frame_timings["frame"]
+        if frame_duration_ms > 0.0:
+            recent_fps_values.append(1000.0 / frame_duration_ms)
+        for timing_name, duration_ms in frame_timings.items():
+            timing_history[timing_name].append(duration_ms)
+        frame_count += 1
+        if config.app.print_timing and frame_count % config.app.timing_log_interval == 0:
+            timing_summary = format_timing_summary(timing_history)
+            if timing_summary:
+                print(timing_summary)
 
         raw_key = cv2.waitKeyEx(1)
 
