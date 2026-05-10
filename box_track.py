@@ -122,6 +122,12 @@ def build_reference_planes(plane_tracking_config, box_size):
         translation_offset=(0, 0, box_depth * 0.5),
         world_size=(box_width, box_height),
     )
+
+    box_width = 10.0
+    box_depth =
+    box_height =
+    # left_plane.updateTransform((0, 0, box_width * 0.5), (box_depth, box_height))
+
     return [front_plane, left_plane, right_plane, back_plane], aruco_registry
 
 

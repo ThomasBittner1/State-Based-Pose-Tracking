@@ -184,6 +184,8 @@ class Plane:
             dtype=np.float32,
         )
 
+        self.ratio = target_width / target_height
+
         transform = cv2.getPerspectiveTransform(ordered, destination)
         self.warped_reference_img = cv2.warpPerspective(image, transform, (target_width, target_height))
 
