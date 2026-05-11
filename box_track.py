@@ -103,7 +103,7 @@ def build_reference_planes(config):
 
 
 def main():
-    config = AppConfig()
+    config = AppConfig(enable_pose_kalman=False, debug_record_webcam=True)
     all_planes, aruco_registry = build_reference_planes(config)
     time_before_load_detection_model = time.time()
     detection_model = yolo.load_detection_model(
