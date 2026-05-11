@@ -52,13 +52,6 @@ class AppConfig:
     yolo_iou: float = 0.1
     yolo_input_size: int = 640
 
-    # remove those
-    output_frame_width: int = 1440
-    skip_tracking: bool = False
-
-
-
-
 def draw_frame_number(frame, frame_rate=None, frame_number=None):
     frame_text = ""
     if frame_number:
@@ -162,7 +155,6 @@ def main():
         print("Error: Failed to read initial frame from webcam.")
         cap.release()
         sys.exit(1)
-    frame = geometry.crop_frame_to_width(frame, config.output_frame_width)
     print(f"Working resolution: {frame.shape[1]}x{frame.shape[0]}")
 
     fps = float(cap.get(cv2.CAP_PROP_FPS))
@@ -207,7 +199,6 @@ def main():
                     print("Error: Failed to read frame from webcam.")
                     break
                 current_frame_number += 1
-                frame = geometry.crop_frame_to_width(frame, config.output_frame_width)
                 if movie_writer is not None:
                     movie_writer.write(frame)
             unflipped_frame = np.copy(frame)
@@ -219,126 +210,125 @@ def main():
             aruco_found_count = 0
 
 
-            if not config.skip_tracking:
-                frame_gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+            frame_gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 
-                arucos_per_planes = defaultdict(list)
-                for dictionary_name in aruco_registry.used_dictionary_names:
-                    corners, marker_ids, _rejected = aruco_registry.detect_markers(dictionary_name, unflipped_frame)
-                    if marker_ids is not None:
-                        for m, marker_id in enumerate(marker_ids.ravel()):
-                            found_aruco = aruco_registry.get_marker(dictionary_name, marker_id)
-                            if found_aruco:
-                                aruco_found_count += 1
-                                arucos_per_planes[found_aruco.plane].append(found_aruco)
-                                corners[m][0][:, 0] = frame_width - corners[m][0][:, 0]
-                                found_aruco.last_corners = corners[m][0]
-                                if debug_view:
-                                    cv2.aruco.drawDetectedMarkers(frame_preview, [corners[m]], np.array([[int(marker_id)]], dtype=np.int32))
-                                edge_vectors = np.roll(found_aruco.last_corners, -1, axis=0) - found_aruco.last_corners
-                                edge_lengths = np.linalg.norm(edge_vectors, axis=1)
-                                normalized_edge_vectors = edge_vectors / np.maximum(edge_lengths[:, None], 1e-6)
-                                angle_score = 1.0 - float(np.mean(np.abs(np.sum(normalized_edge_vectors * np.roll(normalized_edge_vectors, -1, axis=0), axis=1))))
-                                side_length_score = float(np.min(edge_lengths) / max(np.max(edge_lengths), 1e-6))
-                                diagonal_lengths = np.array(
-                                    [
-                                        np.linalg.norm(found_aruco.last_corners[2] - found_aruco.last_corners[0]),
-                                        np.linalg.norm(found_aruco.last_corners[3] - found_aruco.last_corners[1]),
-                                    ],
-                                    dtype=np.float32,
-                                )
-                                diagonal_score = float(np.min(diagonal_lengths) / max(np.max(diagonal_lengths), 1e-6))
-                                found_aruco.frontal_score = float(np.clip(angle_score * side_length_score * diagonal_score, 0.0, 1.0))
+            arucos_per_planes = defaultdict(list)
+            for dictionary_name in aruco_registry.used_dictionary_names:
+                corners, marker_ids, _rejected = aruco_registry.detect_markers(dictionary_name, unflipped_frame)
+                if marker_ids is not None:
+                    for m, marker_id in enumerate(marker_ids.ravel()):
+                        found_aruco = aruco_registry.get_marker(dictionary_name, marker_id)
+                        if found_aruco:
+                            aruco_found_count += 1
+                            arucos_per_planes[found_aruco.plane].append(found_aruco)
+                            corners[m][0][:, 0] = frame_width - corners[m][0][:, 0]
+                            found_aruco.last_corners = corners[m][0]
+                            if debug_view:
+                                cv2.aruco.drawDetectedMarkers(frame_preview, [corners[m]], np.array([[int(marker_id)]], dtype=np.int32))
+                            edge_vectors = np.roll(found_aruco.last_corners, -1, axis=0) - found_aruco.last_corners
+                            edge_lengths = np.linalg.norm(edge_vectors, axis=1)
+                            normalized_edge_vectors = edge_vectors / np.maximum(edge_lengths[:, None], 1e-6)
+                            angle_score = 1.0 - float(np.mean(np.abs(np.sum(normalized_edge_vectors * np.roll(normalized_edge_vectors, -1, axis=0), axis=1))))
+                            side_length_score = float(np.min(edge_lengths) / max(np.max(edge_lengths), 1e-6))
+                            diagonal_lengths = np.array(
+                                [
+                                    np.linalg.norm(found_aruco.last_corners[2] - found_aruco.last_corners[0]),
+                                    np.linalg.norm(found_aruco.last_corners[3] - found_aruco.last_corners[1]),
+                                ],
+                                dtype=np.float32,
+                            )
+                            diagonal_score = float(np.min(diagonal_lengths) / max(np.max(diagonal_lengths), 1e-6))
+                            found_aruco.frontal_score = float(np.clip(angle_score * side_length_score * diagonal_score, 0.0, 1.0))
 
-                if arucos_per_planes:
-                    best_plane = max(arucos_per_planes, key=lambda k: max(a.frontal_score for a in arucos_per_planes[k]))
-                    best_arucos = arucos_per_planes[best_plane]
-                    best_plane.points_3d = np.concatenate([a.points_3d for a in best_arucos])
-                    best_plane.points_2d = np.concatenate([a.last_corners for a in best_arucos])
-                    best_plane_confidence = 1.0
+            if arucos_per_planes:
+                best_plane = max(arucos_per_planes, key=lambda k: max(a.frontal_score for a in arucos_per_planes[k]))
+                best_arucos = arucos_per_planes[best_plane]
+                best_plane.points_3d = np.concatenate([a.points_3d for a in best_arucos])
+                best_plane.points_2d = np.concatenate([a.last_corners for a in best_arucos])
+                best_plane_confidence = 1.0
 
-                    stage_start = time.perf_counter()
-                    success, rotation_vectors, translation_vectors, _ = cv2.solvePnPGeneric(
-                        best_plane.points_3d,
-                        best_plane.points_2d,
+                stage_start = time.perf_counter()
+                success, rotation_vectors, translation_vectors, _ = cv2.solvePnPGeneric(
+                    best_plane.points_3d,
+                    best_plane.points_2d,
+                    active_camera_matrix,
+                    active_distortion_coefficients,
+                    flags=cv2.SOLVEPNP_IPPE,
+                )
+                projected_bounds = None
+                if success:
+                    projected_corner_points, _ = cv2.projectPoints(
+                        best_plane.four_corner_points_3d,
+                        rotation_vectors[0],
+                        translation_vectors[0],
                         active_camera_matrix,
                         active_distortion_coefficients,
-                        flags=cv2.SOLVEPNP_IPPE,
                     )
-                    projected_bounds = None
-                    if success:
-                        projected_corner_points, _ = cv2.projectPoints(
-                            best_plane.four_corner_points_3d,
-                            rotation_vectors[0],
-                            translation_vectors[0],
-                            active_camera_matrix,
-                            active_distortion_coefficients,
-                        )
-                        projected_corner_points = np.rint(projected_corner_points.reshape(-1, 2)).astype(np.int32)
-                        projected_bounds = (
-                            int(np.min(projected_corner_points[:, 0])),
-                            int(np.min(projected_corner_points[:, 1])),
-                            int(np.max(projected_corner_points[:, 0])),
-                            int(np.max(projected_corner_points[:, 1])),
-                        )
-                    add_timing(frame_timings, "pose", stage_start)
+                    projected_corner_points = np.rint(projected_corner_points.reshape(-1, 2)).astype(np.int32)
+                    projected_bounds = (
+                        int(np.min(projected_corner_points[:, 0])),
+                        int(np.min(projected_corner_points[:, 1])),
+                        int(np.max(projected_corner_points[:, 0])),
+                        int(np.max(projected_corner_points[:, 1])),
+                    )
+                add_timing(frame_timings, "pose", stage_start)
 
-                    stage_start = time.perf_counter()
-                    best_plane.find_matches(frame_gray, projected_bounds, concat_points=True)
-                    add_timing(frame_timings, "match", stage_start)
-                    best_plane_confidence = 1.0
-                    stage_start = time.perf_counter()
-                    best_plane.estimate_pose_from_matches(active_camera_matrix, active_distortion_coefficients) #, frame_debug=frame_preview)
-                    add_timing(frame_timings, "pose", stage_start)
+                stage_start = time.perf_counter()
+                best_plane.find_matches(frame_gray, projected_bounds, concat_points=True)
+                add_timing(frame_timings, "match", stage_start)
+                best_plane_confidence = 1.0
+                stage_start = time.perf_counter()
+                best_plane.estimate_pose_from_matches(active_camera_matrix, active_distortion_coefficients) #, frame_debug=frame_preview)
+                add_timing(frame_timings, "pose", stage_start)
 
-                else: # no aruco found
-                    stage_start = time.perf_counter()
-                    detections = detection_model.predict(frame)
-                    best_yolo_detection = yolo.select_best_yolo_detection(detections)
-                    add_timing(frame_timings, "yolo", stage_start)
-                    if best_yolo_detection is not None:
-                        recent_yolo_bounds.append(best_yolo_detection["bounds"])
-                        recent_yolo_bounds = recent_yolo_bounds[-config.yolo_bounds_history_size:]
-                    combined_yolo_bounds = geometry.combine_detection_bounds(recent_yolo_bounds, frame.shape)
+            else: # no aruco found
+                stage_start = time.perf_counter()
+                detections = detection_model.predict(frame)
+                best_yolo_detection = yolo.select_best_yolo_detection(detections)
+                add_timing(frame_timings, "yolo", stage_start)
+                if best_yolo_detection is not None:
+                    recent_yolo_bounds.append(best_yolo_detection["bounds"])
+                    recent_yolo_bounds = recent_yolo_bounds[-config.yolo_bounds_history_size:]
+                combined_yolo_bounds = geometry.combine_detection_bounds(recent_yolo_bounds, frame.shape)
 
-                    best_plane = None
-                    stage_start = time.perf_counter()
-                    for p, plane in enumerate(all_planes):
-                        plane_confidence = plane.find_matches(frame_gray, combined_yolo_bounds)
-                        if plane_confidence > 0.9:
-                            add_timing(frame_timings, "match", stage_start)
-                            stage_start = time.perf_counter()
-                            found_pose = plane.estimate_pose_from_matches(active_camera_matrix, active_distortion_coefficients)
-                            add_timing(frame_timings, "pose", stage_start)
-                            if found_pose:
-                                if p != 0:
-                                    all_planes.insert(0, all_planes.pop(p))
-                                best_plane = plane
-                                best_plane_confidence = plane_confidence
-                                break
-                            stage_start = time.perf_counter()
-                    else:
+                best_plane = None
+                stage_start = time.perf_counter()
+                for p, plane in enumerate(all_planes):
+                    plane_confidence = plane.find_matches(frame_gray, combined_yolo_bounds)
+                    if plane_confidence > 0.9:
                         add_timing(frame_timings, "match", stage_start)
-
-                step_once = False
-                if pause_after_first_frame:
-                    paused = True
-                    pause_after_first_frame = False
-
-                if best_plane is not None:
-                    if filtered_pose_plane_name != best_plane.name:
-                        pose_kalman_filter.reset()
-                        filtered_pose_plane_name = best_plane.name
-                    current_pose_blend = float(np.interp(best_plane_confidence, [0.0, 0.5, 0.65, 1.0], [0.0, 0.0, 1.0, 1.0]))
-                    filtered_pose_result = pose_kalman_filter.filter_pose(best_plane.pose_result)
-                    blended_pose_result = geometry.blend_pose_result(blended_pose_result, filtered_pose_result, current_pose_blend)
+                        stage_start = time.perf_counter()
+                        found_pose = plane.estimate_pose_from_matches(active_camera_matrix, active_distortion_coefficients)
+                        add_timing(frame_timings, "pose", stage_start)
+                        if found_pose:
+                            if p != 0:
+                                all_planes.insert(0, all_planes.pop(p))
+                            best_plane = plane
+                            best_plane_confidence = plane_confidence
+                            break
+                        stage_start = time.perf_counter()
                 else:
-                    filtered_pose_plane_name = None
+                    add_timing(frame_timings, "match", stage_start)
 
-                aruco_status_text = f"ArUco count: {aruco_found_count}"
-                aruco_status_color = (0, 0, 255) if aruco_found_count == 0 else (255, 255, 255)
-                cv2.putText(frame_preview, aruco_status_text, (20, 35), cv2.FONT_HERSHEY_SIMPLEX, 0.9, aruco_status_color, 2, cv2.LINE_AA)
-                cv2.putText(frame_preview, aruco_status_text, (20, 35), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 0, 0), 1, cv2.LINE_AA)
+            step_once = False
+            if pause_after_first_frame:
+                paused = True
+                pause_after_first_frame = False
+
+            if best_plane is not None:
+                if filtered_pose_plane_name != best_plane.name:
+                    pose_kalman_filter.reset()
+                    filtered_pose_plane_name = best_plane.name
+                current_pose_blend = float(np.interp(best_plane_confidence, [0.0, 0.5, 0.65, 1.0], [0.0, 0.0, 1.0, 1.0]))
+                filtered_pose_result = pose_kalman_filter.filter_pose(best_plane.pose_result)
+                blended_pose_result = geometry.blend_pose_result(blended_pose_result, filtered_pose_result, current_pose_blend)
+            else:
+                filtered_pose_plane_name = None
+
+            aruco_status_text = f"ArUco count: {aruco_found_count}"
+            aruco_status_color = (0, 0, 255) if aruco_found_count == 0 else (255, 255, 255)
+            cv2.putText(frame_preview, aruco_status_text, (20, 35), cv2.FONT_HERSHEY_SIMPLEX, 0.9, aruco_status_color, 2, cv2.LINE_AA)
+            cv2.putText(frame_preview, aruco_status_text, (20, 35), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 0, 0), 1, cv2.LINE_AA)
 
         else: # paused
             pass
@@ -348,38 +338,35 @@ def main():
         #
         averaged_fps = float(np.mean(recent_fps_values)) if recent_fps_values else 0.0
 
-        if not config.skip_tracking:
+        if best_plane is not None:
+            stage_start = time.perf_counter()
+            for plane in all_planes:
+                plane.draw(frame_preview,
+                            active_camera_matrix,
+                            active_distortion_coefficients,
+                            pose_result=blended_pose_result,
+                            skip_if_not_visible=True)
+            add_timing(frame_timings, "draw_box", stage_start)
+        text_origin = (frame_preview.shape[1] - fps_text_width - 20, 20 + fps_text_height)
+        cv2.putText(frame_preview, f"fps: {averaged_fps:.1f}", text_origin, cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 255), 2, cv2.LINE_AA)
+
+        if debug_view:
+            yolo.draw_yolo_overlay(frame_preview, detections, combined_bounds=combined_yolo_bounds)
             if best_plane is not None:
-                stage_start = time.perf_counter()
-                for plane in all_planes:
-                    plane.draw(frame_preview,
-                                active_camera_matrix,
-                                active_distortion_coefficients,
-                                pose_result=blended_pose_result,
-                                skip_if_not_visible=True)
-                add_timing(frame_timings, "draw_box", stage_start)
-            text_origin = (frame_preview.shape[1] - fps_text_width - 20, 20 + fps_text_height)
-            cv2.putText(frame_preview, f"fps: {averaged_fps:.1f}", text_origin, cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 255), 2, cv2.LINE_AA)
+                best_plane.draw(frame_preview, active_camera_matrix, active_distortion_coefficients, draw_axes=True)
 
-            if debug_view:
-                yolo.draw_yolo_overlay(frame_preview, detections, combined_bounds=combined_yolo_bounds)
-                if best_plane is not None:
-                    best_plane.draw(frame_preview, active_camera_matrix, active_distortion_coefficients, draw_axes=True)
+            frame_height, frame_width = frame_preview.shape[:2]
+            total_reference_height = sum(plane.get_scaled_reference_size(reference_column_width)[1] for plane in all_planes)
+            canvas_height = max(frame_height, total_reference_height)
+            canvas_width = reference_column_width + frame_width
+            frame_with_references = np.zeros((canvas_height, canvas_width, 3), dtype=np.uint8)
+            frame_with_references[:frame_height, reference_column_width:reference_column_width + frame_width] = frame_preview
 
-                frame_height, frame_width = frame_preview.shape[:2]
-                total_reference_height = sum(plane.get_scaled_reference_size(reference_column_width)[1] for plane in all_planes)
-                canvas_height = max(frame_height, total_reference_height)
-                canvas_width = reference_column_width + frame_width
-                frame_with_references = np.zeros((canvas_height, canvas_width, 3), dtype=np.uint8)
-                frame_with_references[:frame_height, reference_column_width:reference_column_width + frame_width] = frame_preview
+            if best_plane is not None:
+                best_plane.draw_lines_to_reference(frame_with_references, reference_column_width, 0, best_plane_confidence)
 
-                if best_plane is not None:
-                    best_plane.draw_lines_to_reference(frame_with_references, reference_column_width, 0, best_plane_confidence)
-
-                cv2.putText(frame_with_references, f"D: debug {'on' if debug_view else 'off'} | SPACE: pause | Q: quit", (20, 60), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 255), 2, cv2.LINE_AA)
-                cv2.imshow(WINDOW_NAME, frame_with_references)
-            else:
-                cv2.imshow(WINDOW_NAME, frame_preview)
+            cv2.putText(frame_with_references, f"D: debug {'on' if debug_view else 'off'} | SPACE: pause | Q: quit", (20, 60), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 255), 2, cv2.LINE_AA)
+            cv2.imshow(WINDOW_NAME, frame_with_references)
         else:
             cv2.imshow(WINDOW_NAME, frame_preview)
 

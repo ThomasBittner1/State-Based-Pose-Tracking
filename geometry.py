@@ -16,18 +16,6 @@ def combine_detection_bounds(bounds_history, frame_shape):
     return (left, top, right, bottom)
 
 
-def crop_frame_to_width(frame, target_width):
-    if target_width is None:
-        return frame
-    frame_height, frame_width = frame.shape[:2]
-    target_width = int(target_width)
-    if target_width <= 0 or target_width >= frame_width:
-        return frame
-    left = (frame_width - target_width) // 2
-    right = left + target_width
-    return frame[:, left:right]
-
-
 def blend_pose_result(previous_pose_result, latest_pose_result, pose_blend):
     if previous_pose_result is None or latest_pose_result is None:
         return latest_pose_result
