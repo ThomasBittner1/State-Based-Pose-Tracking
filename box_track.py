@@ -107,11 +107,11 @@ def build_reference_planes(plane_tracking_config):
     front_plane.compute_feature_correspondences((box_width, box_height),
                                                 rotation_offset=[[1, 0, 0], [0, 1, 0], [0, 0, 1]], translation_offset=(0, 0, box_depth * 0.5))
     back_plane.compute_feature_correspondences((box_width, box_height),
-                                               rotation_offset=[[-1, 0, 0], [0, 1, 0], [0, 0, -1]], translation_offset=(0, 0, box_depth * 0.5),)
+                                               rotation_offset=[[-1, 0, 0], [0, 1, 0], [0, 0, -1]], translation_offset=(0, 0, box_depth * 0.5))
     left_plane.compute_feature_correspondences((box_depth, box_height),
-                                               rotation_offset=[[0, 0, 1], [0, 1, 0], [-1, 0, 0]], translation_offset=(0, 0, box_width * 0.5))
-    right_plane.compute_feature_correspondences((box_depth, box_height),
                                                 rotation_offset=[[0, 0, -1], [0, 1, 0], [1, 0, 0]], translation_offset=(0, 0, box_width * 0.5))
+    right_plane.compute_feature_correspondences((box_depth, box_height),
+                                                rotation_offset=[[0, 0, 1], [0, 1, 0], [-1, 0, 0]], translation_offset=(0, 0, box_width * 0.5))
 
     return [front_plane, left_plane, right_plane, back_plane, back_plane], aruco_registry
 
@@ -135,6 +135,10 @@ def main():
     video_capture_source = str(input_source) if isinstance(input_source, Path) else input_source
 
     cap = cv2.VideoCapture(video_capture_source)
+    cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
+    cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
+
+
     if not cap.isOpened():
         print(f"Error: Could not open input source {input_source}.")
         sys.exit(1)

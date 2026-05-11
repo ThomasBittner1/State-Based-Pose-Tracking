@@ -636,10 +636,8 @@ class Plane:
         for index, keypoint in enumerate(self.reference_keypoints):
             if index not in matched_reference_indices:
                 continue
-            point = (
-                int(round(keypoint.pt[0] * scale)),
-                reference_top + int(round(keypoint.pt[1] * scale)),
-            )
+            point = (int(round(keypoint.pt[0] * scale)),
+                    reference_top + int(round(keypoint.pt[1] * scale)))
             color = (255, 0, 0) if index in self.optical_flow_query_indices else (0, 255, 0)
             color = self.get_display_color(color)
             radius = max(2, int(round(keypoint.size * 0.5)))
@@ -647,10 +645,8 @@ class Plane:
             cv2.circle(frame_with_references, point, 1, color, -1)
 
         for index, match in enumerate(self.good_matches):
-            reference_point = (
-                int(round(self.reference_keypoints[match.queryIdx].pt[0] * scale)),
-                reference_top + int(round(self.reference_keypoints[match.queryIdx].pt[1] * scale)),
-            )
+            reference_point = (int(round(self.reference_keypoints[match.queryIdx].pt[0] * scale)),
+                reference_top + int(round(self.reference_keypoints[match.queryIdx].pt[1] * scale)))
             frame_point = tuple(np.rint(self.key_points_on_full_frame[match.trainIdx].pt).astype(int))
             frame_point_on_canvas = (frame_point[0] + reference_column_width, frame_point[1])
             is_inlier = self.inlier_mask[index] if index < len(self.inlier_mask) else False

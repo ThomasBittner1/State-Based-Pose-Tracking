@@ -54,9 +54,10 @@ def main():
     output_path = get_output_path()
 
     cap = cv2.VideoCapture(CAMERA_INDEX)
-    cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1290)
-    cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 1080)
-
+    cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
+    cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
+    print ('width: ', cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+    print ('height: ', cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
 
     if not cap.isOpened():
         print(f"Error: Could not open camera {CAMERA_INDEX}.")
