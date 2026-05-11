@@ -21,7 +21,7 @@ WINDOW_NAME = "Box Tracker"
 class AppConfig:
     input_source: int | str | Path = 0 # this is the camera index or video path
     camera_calibration_path: Path = Path("calibration/camera.json")
-    model_path: Path = Path("models/best.engine")
+    model_path: Path = Path(r"C:\ComputerVision\_Datasets_\tb_dataManager\box_tracker_tracker\train\weights\best.engine")
     default_fps: float = 30.0
 
     # feature matching / optical flow:

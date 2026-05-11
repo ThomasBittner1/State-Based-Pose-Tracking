@@ -6,6 +6,12 @@ robustness and tracking stability.
 The system first scans the camera feed and checks if ArUcos are present in the image. And then it switches between
 those 2 states.
 
+
+<video autoplay muted loop controls width="968">
+    <source src="images/box_track.mp4" type="video/mp4">
+    Your browser does not support the video tag.
+</video>
+
 ```text
 Camera
    ↓
@@ -42,12 +48,16 @@ the result through a **Kalman filter** to smooth short-term pose jitter.
 
 
 # How to use it on any box
-The mandatory part of the setup is just capturing the sides, and annotating those captures by drawing a rectangle
-on the sides.  
-No ArUcos are needed to be specified. The tool will automatically check in the images if there are ArUcos present and take their
-measurements automatically.
 
 ### Capture the sides
+
+The mandatory part of the setup is just capturing the sides, and annotating those captures by drawing a rectangle
+on the sides. No ArUcos are needed to be specified. The tool will automatically check in the images if there are ArUcos present and take their
+measurements automatically.
+  
+This section explains how to create these 4 images with their annotations:  
+![Alt text](images/_annotations_2x2.png)  
+
 First capture the sides of the box. Run the following command:
 
 ``` bash
