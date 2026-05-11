@@ -24,7 +24,7 @@ class AppConfig:
     model_path: Path = Path("models/best.engine")
     default_fps: float = 30.0
 
-    # feature matching / optical flow
+    # feature matching / optical flow:
     feature_detector: plane.FeatureDetectorName = "ORB"
     bruteforce_matcher: bool = True
     min_match_count: int = 8
@@ -33,22 +33,22 @@ class AppConfig:
     flow_window_size: tuple[int, int] = (21, 21)
     flow_max_level: int = 3
 
-    # post stabalizing
-    straighten_z_on_front: bool = True
-    straight_rotation_start_angle_degrees: float = 5.0
-    straight_rotation_end_angle_degrees: float = 10.0
+    # post stabalizing:
     enable_pose_kalman: bool = True
     enable_pose_outlier_detector: bool = True
+    straighten_z_on_front: bool = False
+    straight_rotation_start_angle_degrees: float = 5.0
+    straight_rotation_end_angle_degrees: float = 10.0
 
-    # debug
+    # debug:
     fps_display_average_window: int = 10
     debug_timing_log_interval: int = 60
     debug_record_webcam: bool = False
-    debug_recording_path: Path = Path("recorded_001.mp4")
+    debug_recording_path: Path = Path("recorded_002.mp4")
     debug_print_timing: bool = False
     video_start_frame: int = 0
 
-    # yolo
+    # yolo:
     yolo_bounds_history_size: int = 4
     yolo_confidence: float = 0.1
     yolo_iou: float = 0.1
@@ -129,7 +129,7 @@ def build_reference_planes(config):
 
 
 def main():
-    config = AppConfig(enable_pose_kalman=False, straighten_z_on_front=False, debug_record_webcam=True)
+    config = AppConfig(enable_pose_kalman=True, straighten_z_on_front=False, debug_record_webcam=True)
     all_planes, aruco_registry = build_reference_planes(config)
     time_before_load_detection_model = time.time()
     detection_model = yolo.load_detection_model(
