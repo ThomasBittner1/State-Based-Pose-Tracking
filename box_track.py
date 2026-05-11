@@ -31,17 +31,22 @@ class AppConfig:
     skip_tracking: bool = False
     enable_pose_kalman: bool = True
     draw_face_labels: bool = True
+    feature_detector: plane.FeatureDetectorName = "ORB"
+    bruteforce_matcher: bool = True
+    min_match_count: int = 8
+    ransac_threshold: float = 4.0
+    flow_max_error: float = 20.0
+    flow_window_size: tuple[int, int] = (21, 21)
+    flow_max_level: int = 3
+    straighten_z_on_front: bool = True
+    straight_rotation_start_angle_degrees: float = 5.0
+    straight_rotation_end_angle_degrees: float = 10.0
+    yolo_bounds_history_size: int = 4
 
     debug_timing_log_interval: int = 60
     debug_record_webcam: bool = False
     debug_recording_path: Path = Path("recorded_001.mp4")
     debug_print_timing: bool = False
-
-
-@dataclass
-class TrackerConfig:
-    app: AppConfig
-    plane_tracking: plane.PlaneTrackingConfig
 
 
 def draw_frame_number(frame, frame_rate=None, frame_number=None):
@@ -70,33 +75,14 @@ def format_timing_summary(timing_history):
     return " | ".join(parts)
 
 
-def build_tracker_config():
-    return TrackerConfig(
-        app=AppConfig(),
-        plane_tracking=plane.PlaneTrackingConfig(
-            feature_detector=plane.FeatureDetector.ORB,
-            bruteforce_matcher=True,
-            min_match_count=8,
-            ransac_threshold=4.0,
-            flow_max_error=20.0,
-            flow_window_size=(21, 21),
-            flow_max_level=3,
-            straighten_z_on_front=True,
-            straight_rotation_start_angle_degrees=5.0,
-            straight_rotation_end_angle_degrees=10.0,
-            yolo_bounds_history_size=4,
-        ),
-    )
-
-
-def build_reference_planes(plane_tracking_config):
+def build_reference_planes(config):
     aruco_registry = plane.ArucoRegistry()
     pose_history = plane.PoseHistory()
 
-    left_plane = plane.Plane('left', './captures/left.json', aruco_registry, pose_history, plane_tracking_config)
-    right_plane = plane.Plane('right', './captures/right.json', aruco_registry, pose_history, plane_tracking_config)
-    front_plane = plane.Plane('front', './captures/front.json', aruco_registry, pose_history, plane_tracking_config)
-    back_plane = plane.Plane('back', './captures/back.json', aruco_registry, pose_history, plane_tracking_config)
+    left_plane = plane.Plane('left', './captures/left.json', aruco_registry, pose_history, config)
+    right_plane = plane.Plane('right', './captures/right.json', aruco_registry, pose_history, config)
+    front_plane = plane.Plane('front', './captures/front.json', aruco_registry, pose_history, config)
+    back_plane = plane.Plane('back', './captures/back.json', aruco_registry, pose_history, config)
 
     box_width = 10.0
     box_height = box_width / front_plane.ratio
@@ -117,26 +103,26 @@ def build_reference_planes(plane_tracking_config):
 
 
 def main():
-    config = build_tracker_config()
-    all_planes, aruco_registry = build_reference_planes(config.plane_tracking)
+    config = AppConfig()
+    all_planes, aruco_registry = build_reference_planes(config)
     time_before_load_detection_model = time.time()
     detection_model = yolo.load_detection_model(
-        config.app.model_path,
-        config.app.yolo_confidence,
-        config.app.yolo_iou,
-        config.app.yolo_input_size,
+        config.model_path,
+        config.yolo_confidence,
+        config.yolo_iou,
+        config.yolo_input_size,
     )
     print (f'loading yolo model took {time.time() - time_before_load_detection_model} seconds.')
     print(detection_model.describe())
     reference_column_width = max(plane.warped_reference_img.shape[1] for plane in all_planes)
 
-    input_source = config.app.input_source
+    input_source = config.input_source
     is_video_file = isinstance(input_source, (str, Path))
     video_capture_source = str(input_source) if isinstance(input_source, Path) else input_source
 
     cap = cv2.VideoCapture(video_capture_source)
-    cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
-    cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
+    cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
+    cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
 
 
     if not cap.isOpened():
@@ -146,8 +132,8 @@ def main():
     capture_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
     capture_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
     print(f"Camera resolution: {capture_width}x{capture_height}")
-    if is_video_file and config.app.start_frame > 0:
-        cap.set(cv2.CAP_PROP_POS_FRAMES, config.app.start_frame)
+    if is_video_file and config.start_frame > 0:
+        cap.set(cv2.CAP_PROP_POS_FRAMES, config.start_frame)
 
     movie_writer = None
     paused = False
@@ -155,7 +141,7 @@ def main():
     debug_view = False
     recent_yolo_bounds = []
     blended_pose_result = None
-    pose_kalman_filter = geometry.PoseKalmanFilter(enabled=config.app.enable_pose_kalman)
+    pose_kalman_filter = geometry.PoseKalmanFilter(enabled=config.enable_pose_kalman)
     filtered_pose_plane_name = None
 
     detections = []
@@ -166,34 +152,34 @@ def main():
         print("Error: Failed to read initial frame from webcam.")
         cap.release()
         sys.exit(1)
-    frame = geometry.crop_frame_to_width(frame, config.app.output_frame_width)
+    frame = geometry.crop_frame_to_width(frame, config.output_frame_width)
     print(f"Working resolution: {frame.shape[1]}x{frame.shape[0]}")
 
     fps = float(cap.get(cv2.CAP_PROP_FPS))
     if fps <= 0.0 or not np.isfinite(fps):
-        fps = config.app.default_fps
+        fps = config.default_fps
 
-    if config.app.debug_record_webcam and isinstance(input_source, int):
+    if config.debug_record_webcam and isinstance(input_source, int):
         frame_height, frame_width = frame.shape[:2]
-        movie_writer = cv2.VideoWriter(str(config.app.debug_recording_path), cv2.VideoWriter_fourcc(*"mp4v"), fps, (frame_width, frame_height))
+        movie_writer = cv2.VideoWriter(str(config.debug_recording_path), cv2.VideoWriter_fourcc(*"mp4v"), fps, (frame_width, frame_height))
         if not movie_writer.isOpened():
-            print(f"Error: Could not open movie writer for {config.app.debug_recording_path}.")
+            print(f"Error: Could not open movie writer for {config.debug_recording_path}.")
             cap.release()
             sys.exit(1)
         movie_writer.write(frame)
-    calibration = camera.load_calibration(config.app.camera_calibration_path, (capture_width, capture_height))
+    calibration = camera.load_calibration(config.camera_calibration_path, (capture_width, capture_height))
     if calibration is None:
         calibration = camera.create_fallback_calibration(frame.shape)
-        print(f"No matching camera calibration found at {config.app.camera_calibration_path}; using fallback intrinsics.")
+        print(f"No matching camera calibration found at {config.camera_calibration_path}; using fallback intrinsics.")
     else:
-        print(f"Loaded camera calibration from {config.app.camera_calibration_path}.")
+        print(f"Loaded camera calibration from {config.camera_calibration_path}.")
     active_camera_matrix = calibration.camera_matrix
     active_distortion_coefficients = calibration.distortion_coefficients
-    current_frame_number = config.app.start_frame if is_video_file else 0
+    current_frame_number = config.start_frame if is_video_file else 0
     use_current_frame = True
     step_once = False
-    recent_fps_values = deque(maxlen=config.app.timing_average_window)
-    timing_history = defaultdict(lambda: deque(maxlen=config.app.timing_average_window))
+    recent_fps_values = deque(maxlen=config.timing_average_window)
+    timing_history = defaultdict(lambda: deque(maxlen=config.timing_average_window))
     frame_count = 0
 
     (fps_text_width, fps_text_height), _ = cv2.getTextSize("fps 000.0", cv2.FONT_HERSHEY_SIMPLEX, 0.8, 2)
@@ -211,7 +197,7 @@ def main():
                     print("Error: Failed to read frame from webcam.")
                     break
                 current_frame_number += 1
-                frame = geometry.crop_frame_to_width(frame, config.app.output_frame_width)
+                frame = geometry.crop_frame_to_width(frame, config.output_frame_width)
                 if movie_writer is not None:
                     movie_writer.write(frame)
             unflipped_frame = np.copy(frame)
@@ -223,7 +209,7 @@ def main():
             aruco_found_count = 0
 
 
-            if not config.app.skip_tracking:
+            if not config.skip_tracking:
                 frame_gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 
                 arucos_per_planes = defaultdict(list)
@@ -302,7 +288,7 @@ def main():
                     add_timing(frame_timings, "yolo", stage_start)
                     if best_yolo_detection is not None:
                         recent_yolo_bounds.append(best_yolo_detection["bounds"])
-                        recent_yolo_bounds = recent_yolo_bounds[-config.plane_tracking.yolo_bounds_history_size:]
+                        recent_yolo_bounds = recent_yolo_bounds[-config.yolo_bounds_history_size:]
                     combined_yolo_bounds = geometry.combine_detection_bounds(recent_yolo_bounds, frame.shape)
 
                     best_plane = None
@@ -352,7 +338,7 @@ def main():
         #
         averaged_fps = float(np.mean(recent_fps_values)) if recent_fps_values else 0.0
 
-        if not config.app.skip_tracking:
+        if not config.skip_tracking:
             if best_plane is not None:
                 stage_start = time.perf_counter()
                 for plane in all_planes:
@@ -361,7 +347,7 @@ def main():
                         active_camera_matrix,
                         active_distortion_coefficients,
                         pose_result=blended_pose_result,
-                        draw_label=config.app.draw_face_labels,
+                        draw_label=config.draw_face_labels,
                         skip_if_not_visible=True,
                     )
                 add_timing(frame_timings, "draw_box", stage_start)
@@ -397,7 +383,7 @@ def main():
         for timing_name, duration_ms in frame_timings.items():
             timing_history[timing_name].append(duration_ms)
         frame_count += 1
-        if config.app.debug_print_timing and frame_count % config.app.debug_timing_log_interval == 0:
+        if config.debug_print_timing and frame_count % config.debug_timing_log_interval == 0:
             timing_summary = format_timing_summary(timing_history)
             if timing_summary:
                 print(timing_summary)
