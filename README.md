@@ -4,22 +4,15 @@ This project is a state-based box pose tracking system that combines multiple co
 robustness and tracking stability.
 
 
-<video autoplay muted loop controls width="968">
-    <source src="hhttps://github.com/ThomasBittner1/State-Based-Pose-Tracking/blob/main/images/box_track.mp4" type="video/mp4">
-</video>
+
 
 The system first scans the camera feed and checks if ArUcos are present in the image. And then it switches between
 those 2 states.
 
 
-<video autoplay muted loop controls width="968">
-    <source src="https://github.com/ThomasBittner1/State-Based-Pose-Tracking/blob/main/images/box_track.mp4" type="video/mp4">
-    Your browser does not support the video tag.
-</video>
 
-<video autoplay muted loop controls width="968">
-    <source src="images/box_track.mp4" type="video/mp4">
-    Your browser does not support the video tag.
+<video controls width="800">
+  <source src="images/box_track.mp4" type="video/mp4">
 </video>
 
 ```text
