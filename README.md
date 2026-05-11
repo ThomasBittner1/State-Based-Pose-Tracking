@@ -3,17 +3,10 @@
 This project is a state-based box pose tracking system that combines multiple computer vision methods to improve 
 robustness and tracking stability.
 
-
-
-
 The system first scans the camera feed and checks if ArUcos are present in the image. And then it switches between
 those 2 states.
 
-
-
-<video controls width="800">
-  <source src="https://raw.githubusercontent.com/ThomasBittner1/State-Based-Pose-Tracking/main/images/box_track.mp4" type="video/mp4">
-</video>
+![Alt text](images/box_track.gif)  
 
 
 ```text
