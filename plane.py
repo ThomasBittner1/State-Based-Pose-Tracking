@@ -68,40 +68,20 @@ class ArucoRegistry:
         return self.markers_by_dictionary[dictionary_name].get(int(marker_id))
 
 
-class PoseHistory:
-    def __init__(self, min_similarity=0.7):
-        self.min_similarity = float(min_similarity)
-        self.rotation_matrices = []
-
-    def accepts(self, rotation_matrix):
-        if not self.rotation_matrices:
-            self.rotation_matrices = [rotation_matrix]
-            return True
-
-        for previous_rotation_matrix in self.rotation_matrices:
-            rotation_similarity = geometry.rotation_matrix_similarity(previous_rotation_matrix, rotation_matrix)
-            if rotation_similarity > self.min_similarity:
-                self.rotation_matrices = [rotation_matrix]
-                return True
-
-        self.rotation_matrices.append(rotation_matrix)
-        return False
-
-
 class Plane:
     def __init__(
         self,
         name,
         json_path,
         aruco_registry,
-        pose_history,
+        pose_outlier_detector,
         config=None,
         world_size=(1.0, 1.0),
         display_color_multiplier=1.0,
     ):
         self.name = name
         self.aruco_registry = aruco_registry
-        self.pose_history = pose_history
+        self.pose_outlier_detector = pose_outlier_detector
         self.config = config
         self.previous_tracking = {"frame_gray": None, "points_by_query": {}}
         self.good_matches = []
@@ -540,7 +520,7 @@ class Plane:
             cv2.line(frame_debug, debug_axis_origin, tuple(debug_axis_points_2d[2]), (0, 125, 0), 3)
             cv2.line(frame_debug, debug_axis_origin, tuple(debug_axis_points_2d[3]), (125, 0, 0), 3)
 
-        if not self.pose_history.accepts(rotation_matrix):
+        if self.config.enable_pose_outlier_detector and not self.pose_outlier_detector.accepts(rotation_matrix):
             return False
 
         rotation_vector, _ = cv2.Rodrigues(rotation_matrix)

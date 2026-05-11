@@ -37,6 +37,7 @@ class AppConfig:
     straight_rotation_start_angle_degrees: float = 5.0
     straight_rotation_end_angle_degrees: float = 10.0
     enable_pose_kalman: bool = True
+    enable_pose_outlier_detector: bool = True
 
     # debug
     fps_display_average_window: int = 10
@@ -51,6 +52,27 @@ class AppConfig:
     yolo_confidence: float = 0.1
     yolo_iou: float = 0.1
     yolo_input_size: int = 640
+
+
+class PoseOutlierDetector:
+    def __init__(self, min_similarity=0.7):
+        self.min_similarity = float(min_similarity)
+        self.rotation_matrices = []
+
+    def accepts(self, rotation_matrix):
+        if not self.rotation_matrices:
+            self.rotation_matrices = [rotation_matrix]
+            return True
+
+        for previous_rotation_matrix in self.rotation_matrices:
+            rotation_similarity = geometry.rotation_matrix_similarity(previous_rotation_matrix, rotation_matrix)
+            if rotation_similarity > self.min_similarity:
+                self.rotation_matrices = [rotation_matrix]
+                return True
+
+        self.rotation_matrices.append(rotation_matrix)
+        return False
+
 
 def draw_frame_number(frame, frame_rate=None, frame_number=None):
     frame_text = ""
@@ -80,12 +102,12 @@ def format_timing_summary(timing_history):
 
 def build_reference_planes(config):
     aruco_registry = plane.ArucoRegistry()
-    pose_history = plane.PoseHistory()
+    pose_outlier_detector = PoseOutlierDetector()
 
-    left_plane = plane.Plane('left', './captures/left.json', aruco_registry, pose_history, config)
-    right_plane = plane.Plane('right', './captures/right.json', aruco_registry, pose_history, config)
-    front_plane = plane.Plane('front', './captures/front.json', aruco_registry, pose_history, config)
-    back_plane = plane.Plane('back', './captures/back.json', aruco_registry, pose_history, config)
+    left_plane = plane.Plane('left', './captures/left.json', aruco_registry, pose_outlier_detector, config)
+    right_plane = plane.Plane('right', './captures/right.json', aruco_registry, pose_outlier_detector, config)
+    front_plane = plane.Plane('front', './captures/front.json', aruco_registry, pose_outlier_detector, config)
+    back_plane = plane.Plane('back', './captures/back.json', aruco_registry, pose_outlier_detector, config)
 
     box_width = 10.0
     box_height = box_width / front_plane.ratio
