@@ -12,7 +12,7 @@ those 2 states.
 
 
 <video controls width="800">
-  <source src="images/box_track.mp4" type="video/mp4">
+  <source src="https://github.com/ThomasBittner1/State-Based-Pose-Tracking/blob/main/images/box_track.mp4" type="video/mp4">
 </video>
 
 ```text
