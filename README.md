@@ -13,7 +13,9 @@ ArUco detection
    ├── Yes → ORB/Akaze and Optical Flow refinement → solvePnP
    └── No  → YOLO → ORB/Akaze and Optical Flow → solvePnP  
    ↓
-Rotation stabilization
+Rotation stabilization (straighten_z_on_front)
+   ↓
+Pose outlier detector
    ↓
 Kalman filtering
 ```

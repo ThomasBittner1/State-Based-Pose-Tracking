@@ -21,16 +21,9 @@ class AppConfig:
     input_source: int | str | Path = 0 # this is the camera index or video path
     camera_calibration_path: Path = Path("calibration/camera.json")
     model_path: Path = Path("models/best.engine")
-    yolo_confidence: float = 0.1
-    yolo_iou: float = 0.1
-    yolo_input_size: int = 640
-    start_frame: int = 60
     default_fps: float = 30.0
-    output_frame_width: int = 1440
-    timing_average_window: int = 10
-    skip_tracking: bool = False
-    enable_pose_kalman: bool = True
-    draw_face_labels: bool = True
+
+    # feature matching / optical flow
     feature_detector: plane.FeatureDetectorName = "ORB"
     bruteforce_matcher: bool = True
     min_match_count: int = 8
@@ -38,15 +31,32 @@ class AppConfig:
     flow_max_error: float = 20.0
     flow_window_size: tuple[int, int] = (21, 21)
     flow_max_level: int = 3
+
+    # post stabalizing
     straighten_z_on_front: bool = True
     straight_rotation_start_angle_degrees: float = 5.0
     straight_rotation_end_angle_degrees: float = 10.0
-    yolo_bounds_history_size: int = 4
+    enable_pose_kalman: bool = True
 
+    # debug
+    fps_display_average_window: int = 10
     debug_timing_log_interval: int = 60
     debug_record_webcam: bool = False
     debug_recording_path: Path = Path("recorded_001.mp4")
     debug_print_timing: bool = False
+    video_start_frame: int = 0
+
+    # yolo
+    yolo_bounds_history_size: int = 4
+    yolo_confidence: float = 0.1
+    yolo_iou: float = 0.1
+    yolo_input_size: int = 640
+
+    # remove those
+    output_frame_width: int = 1440
+    skip_tracking: bool = False
+
+
 
 
 def draw_frame_number(frame, frame_rate=None, frame_number=None):
@@ -103,7 +113,7 @@ def build_reference_planes(config):
 
 
 def main():
-    config = AppConfig(enable_pose_kalman=False, debug_record_webcam=True)
+    config = AppConfig(enable_pose_kalman=False, straighten_z_on_front=False, debug_record_webcam=True)
     all_planes, aruco_registry = build_reference_planes(config)
     time_before_load_detection_model = time.time()
     detection_model = yolo.load_detection_model(
@@ -132,8 +142,8 @@ def main():
     capture_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
     capture_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
     print(f"Camera resolution: {capture_width}x{capture_height}")
-    if is_video_file and config.start_frame > 0:
-        cap.set(cv2.CAP_PROP_POS_FRAMES, config.start_frame)
+    if is_video_file and config.video_start_frame > 0:
+        cap.set(cv2.CAP_PROP_POS_FRAMES, config.video_start_frame)
 
     movie_writer = None
     paused = False
@@ -175,11 +185,11 @@ def main():
         print(f"Loaded camera calibration from {config.camera_calibration_path}.")
     active_camera_matrix = calibration.camera_matrix
     active_distortion_coefficients = calibration.distortion_coefficients
-    current_frame_number = config.start_frame if is_video_file else 0
+    current_frame_number = config.video_start_frame if is_video_file else 0
     use_current_frame = True
     step_once = False
-    recent_fps_values = deque(maxlen=config.timing_average_window)
-    timing_history = defaultdict(lambda: deque(maxlen=config.timing_average_window))
+    recent_fps_values = deque(maxlen=config.fps_display_average_window)
+    timing_history = defaultdict(lambda: deque(maxlen=config.fps_display_average_window))
     frame_count = 0
 
     (fps_text_width, fps_text_height), _ = cv2.getTextSize("fps 000.0", cv2.FONT_HERSHEY_SIMPLEX, 0.8, 2)
@@ -342,14 +352,11 @@ def main():
             if best_plane is not None:
                 stage_start = time.perf_counter()
                 for plane in all_planes:
-                    plane.draw(
-                        frame_preview,
-                        active_camera_matrix,
-                        active_distortion_coefficients,
-                        pose_result=blended_pose_result,
-                        draw_label=config.draw_face_labels,
-                        skip_if_not_visible=True,
-                    )
+                    plane.draw(frame_preview,
+                                active_camera_matrix,
+                                active_distortion_coefficients,
+                                pose_result=blended_pose_result,
+                                skip_if_not_visible=True)
                 add_timing(frame_timings, "draw_box", stage_start)
             text_origin = (frame_preview.shape[1] - fps_text_width - 20, 20 + fps_text_height)
             cv2.putText(frame_preview, f"fps: {averaged_fps:.1f}", text_origin, cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 255), 2, cv2.LINE_AA)
@@ -404,6 +411,7 @@ def main():
     cap.release()
     if movie_writer is not None:
         movie_writer.release()
+        print(f"Recorded webcam video to {config.debug_recording_path.resolve()}")
     cv2.destroyAllWindows()
 
 
