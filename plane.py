@@ -26,26 +26,6 @@ FeatureDetectorName = Literal["ORB", "AKAZE"]
 SUPPORTED_FEATURE_DETECTORS = {"ORB", "AKAZE"}
 
 
-class FeatureDetector:
-    ORB: FeatureDetectorName = "ORB"
-    AKAZE: FeatureDetectorName = "AKAZE"
-
-
-@dataclass
-class PlaneTrackingConfig:
-    feature_detector: FeatureDetectorName = "ORB"
-    bruteforce_matcher: bool = True
-    min_match_count: int = 8
-    ransac_threshold: float = 4.0
-    flow_max_error: float = 20.0
-    flow_window_size: tuple[int, int] = (21, 21)
-    flow_max_level: int = 3
-    straighten_z_on_front: bool = True
-    straight_rotation_start_angle_degrees: float = 5.0
-    straight_rotation_end_angle_degrees: float = 10.0
-    yolo_bounds_history_size: int = 4
-
-
 @dataclass
 class Aruco:
     id: int
@@ -122,7 +102,7 @@ class Plane:
         self.name = name
         self.aruco_registry = aruco_registry
         self.pose_history = pose_history
-        self.config = config or PlaneTrackingConfig()
+        self.config = config
         self.previous_tracking = {"frame_gray": None, "points_by_query": {}}
         self.good_matches = []
         self.key_points_on_full_frame = []
