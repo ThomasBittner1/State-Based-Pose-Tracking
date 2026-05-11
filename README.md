@@ -11,6 +11,11 @@ those 2 states.
 
 
 <video autoplay muted loop controls width="968">
+    <source src="https://github.com/ThomasBittner1/State-Based-Pose-Tracking/blob/main/images/box_track.mp4" type="video/mp4">
+    Your browser does not support the video tag.
+</video>
+
+<video autoplay muted loop controls width="968">
     <source src="images/box_track.mp4" type="video/mp4">
     Your browser does not support the video tag.
 </video>
