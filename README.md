@@ -56,7 +56,7 @@ on the sides. No ArUcos are needed to be specified. The tool will automatically 
 measurements automatically.
   
 This section explains how to create these 4 images with their annotations:  
-![Alt text](images/_annotations_2x2.png)  
+![Alt text](images/annotations_2x2.png)  
 
 First capture the sides of the box. Run the following command:
 
