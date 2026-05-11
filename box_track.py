@@ -51,7 +51,7 @@ class AppConfig:
     # yolo:
     yolo_bounds_history_size: int = 4
     yolo_confidence: float = 0.1
-    yolo_iou: float = 0.1
+    yolo_iou: float = 0.5
     yolo_input_size: int = 640
 
 
