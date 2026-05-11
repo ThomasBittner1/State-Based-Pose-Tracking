@@ -36,7 +36,7 @@ def create_fallback_calibration(frame_shape):
     )
 
 
-def load_calibration(path):
+def load_calibration(path, expected_image_size=None):
     calibration_path = Path(path)
     if not calibration_path.exists():
         return None
@@ -44,16 +44,24 @@ def load_calibration(path):
     with calibration_path.open("r", encoding="utf-8") as file:
         payload = json.load(file)
 
-    return Calibration(
+    calibration = Calibration(
         camera_matrix=np.array(payload["camera_matrix"], dtype=np.float32),
         distortion_coefficients=np.array(payload["distortion_coefficients"], dtype=np.float32).reshape(-1, 1),
         image_size=tuple(payload["image_size"]),
         reprojection_error=payload.get("reprojection_error"),
     )
 
+    if expected_image_size is not None:
+        expected_image_size = tuple(int(value) for value in expected_image_size)
+        if calibration.image_size != expected_image_size:
+            return None
+
+    return calibration
+
 
 def load_or_create_fallback(path, frame_shape):
-    calibration = load_calibration(path)
+    expected_image_size = (frame_shape[1], frame_shape[0])
+    calibration = load_calibration(path, expected_image_size)
     if calibration is not None:
         return calibration
     return create_fallback_calibration(frame_shape)

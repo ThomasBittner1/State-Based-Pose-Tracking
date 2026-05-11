@@ -181,10 +181,10 @@ def main():
             cap.release()
             sys.exit(1)
         movie_writer.write(frame)
-    calibration = camera.load_calibration(config.app.camera_calibration_path)
+    calibration = camera.load_calibration(config.app.camera_calibration_path, (capture_width, capture_height))
     if calibration is None:
         calibration = camera.create_fallback_calibration(frame.shape)
-        print(f"No camera calibration found at {config.app.camera_calibration_path}; using fallback intrinsics.")
+        print(f"No matching camera calibration found at {config.app.camera_calibration_path}; using fallback intrinsics.")
     else:
         print(f"Loaded camera calibration from {config.app.camera_calibration_path}.")
     active_camera_matrix = calibration.camera_matrix
