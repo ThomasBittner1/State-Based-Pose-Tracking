@@ -7,6 +7,7 @@ import cv2
 import numpy as np
 
 
+import aruco
 import camera
 import geometry
 import plane
@@ -101,7 +102,7 @@ def format_timing_summary(timing_history):
 
 
 def build_reference_planes(config):
-    aruco_registry = plane.ArucoRegistry()
+    aruco_registry = aruco.ArucoRegistry()
     pose_outlier_detector = PoseOutlierDetector()
 
     left_plane = plane.Plane('left', './captures/left.json', aruco_registry, pose_outlier_detector, config)
