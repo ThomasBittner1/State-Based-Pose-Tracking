@@ -19,6 +19,8 @@ ArUco detection
 Pose outlier detector 
    ↓
 Kalman filtering
+   ↓
+Rendering
 ```
 
 ### ArUco Tracking Mode
