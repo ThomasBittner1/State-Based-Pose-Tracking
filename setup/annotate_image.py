@@ -8,6 +8,8 @@ WINDOW_NAME = "Image Annotation"
 RECTANGLE_COLOR = (0, 255, 255)
 PREVIEW_COLOR = (255, 255, 0)
 CAPTURES_DIR = Path("captures")
+POINT_RADIUS = 6
+POINT_HIT_RADIUS = 12
 
 
 class AnnotationTool:
@@ -20,6 +22,7 @@ class AnnotationTool:
             raise FileNotFoundError(f"Could not open image: {self.image_path}")
 
         self.rectangle_points = []
+        self.dragging_point_index = None
         self.load_annotations()
 
     def load_annotations(self):
@@ -62,11 +65,22 @@ class AnnotationTool:
             self.rectangle_points.pop()
             self.save_annotations()
 
+    def find_rectangle_point(self, x, y):
+        for index, point in enumerate(self.rectangle_points):
+            dx = point[0] - x
+            dy = point[1] - y
+            if dx * dx + dy * dy <= POINT_HIT_RADIUS * POINT_HIT_RADIUS:
+                return index
+        return None
+
+    def move_rectangle_point(self, index, x, y):
+        self.rectangle_points[index] = (int(x), int(y))
+
     def draw(self):
         preview = self.image.copy()
 
         for index, point in enumerate(self.rectangle_points, start=1):
-            cv2.circle(preview, point, 6, RECTANGLE_COLOR, -1)
+            cv2.circle(preview, point, POINT_RADIUS, RECTANGLE_COLOR, -1)
             cv2.putText(preview, f"R{index}", (point[0] + 8, point[1] - 8), cv2.FONT_HERSHEY_SIMPLEX, 0.5, RECTANGLE_COLOR, 2, cv2.LINE_AA)
         for index in range(len(self.rectangle_points) - 1):
             cv2.line(preview, self.rectangle_points[index], self.rectangle_points[index + 1], PREVIEW_COLOR, 2)
@@ -74,7 +88,7 @@ class AnnotationTool:
             cv2.line(preview, self.rectangle_points[-1], self.rectangle_points[0], PREVIEW_COLOR, 2)
 
         instructions = [
-            "LMB: add rectangle point",
+            "LMB: add rectangle point / drag existing point",
             "U: undo rectangle point",
             "Q: quit",
         ]
@@ -86,10 +100,20 @@ class AnnotationTool:
     def on_mouse(self, event, x, y, _flags, _param):
         point = (int(x), int(y))
 
-        if event != cv2.EVENT_LBUTTONDOWN:
+        if event == cv2.EVENT_LBUTTONDOWN:
+            self.dragging_point_index = self.find_rectangle_point(*point)
+            if self.dragging_point_index is None:
+                self.add_rectangle_point(*point)
             return
 
-        self.add_rectangle_point(*point)
+        if event == cv2.EVENT_MOUSEMOVE and self.dragging_point_index is not None:
+            self.move_rectangle_point(self.dragging_point_index, *point)
+            return
+
+        if event == cv2.EVENT_LBUTTONUP and self.dragging_point_index is not None:
+            self.move_rectangle_point(self.dragging_point_index, *point)
+            self.dragging_point_index = None
+            self.save_annotations()
 
 
 def get_capture_name():
