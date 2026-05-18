@@ -94,14 +94,27 @@ Camera Calibration is not mandatory either, but it can help the results. To star
 image on an iPad or print it on a flat, rigid surface (thick paper, cardboard, or plastic, don't use a 
 paper that changes form), and run:
 
-
-
 ``` bash
 python setup/calibrate_camera.py
 ```
 Hold that pattern into the camera and hit SPACE. Repeat that 12 times by showing it from different angles.
 When you hit q, he calculates the calibration from your images, and saves it into a json file. The next time you run 
 *box_track.py*, it will automatically pick that calibration file.
+
+
+### Debug Mode
+
+Press **D** while the tracker is running to open the debug view.
+
+The left side shows the reference image for the active box side. Lines connect reference features to their detected
+positions in the live camera frame:
+
+- **Green lines** are feature matches found directly by ORB/Akaze in the current frame.
+- **Blue lines** are feature points recovered by optical flow from previous frames.
+- **Thick lines** are homography inliers, which are trusted for pose estimation.
+- **Thin lines** are rejected/outlier matches
+
+![Alt text](images/debug_mode.jpg)  
 
 
 # Challenges

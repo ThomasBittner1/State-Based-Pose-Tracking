@@ -195,6 +195,7 @@ def main():
     filtered_pose_plane_name = None
 
     detections = []
+    used_yolo_detections = []
     combined_yolo_bounds = None
 
     ret, frame = cap.read()
@@ -259,6 +260,7 @@ def main():
             best_plane = None
             best_plane_confidence = 0.0
             aruco_found_count = 0
+            used_yolo_detections = []
 
 
             frame_gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
@@ -338,6 +340,7 @@ def main():
                 best_yolo_detection = yolo.select_best_yolo_detection(detections)
                 add_timing(frame_timings, "yolo", stage_start)
                 if best_yolo_detection is not None:
+                    used_yolo_detections = [best_yolo_detection]
                     recent_yolo_bounds.append(best_yolo_detection["bounds"])
                     recent_yolo_bounds = recent_yolo_bounds[-config.yolo_bounds_history_size:]
                 combined_yolo_bounds = geometry.combine_detection_bounds(recent_yolo_bounds, frame.shape)
@@ -417,7 +420,7 @@ def main():
             cv2.putText(frame_preview, f"fps: {averaged_fps:.1f}", text_origin, cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 255), 2, cv2.LINE_AA)
 
         if debug_view:
-            yolo.draw_yolo_overlay(frame_preview, detections, combined_bounds=combined_yolo_bounds)
+            yolo.draw_yolo_overlay(frame_preview, used_yolo_detections, combined_bounds=combined_yolo_bounds)
             if best_plane is not None:
                 if config.draw_non_kalman_results:
                     best_plane.draw(frame_preview, active_camera_matrix, active_distortion_coefficients, pose_result=best_plane.pose_result,
