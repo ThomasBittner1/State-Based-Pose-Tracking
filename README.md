@@ -42,17 +42,14 @@ This mode is computationally heavier and results in lower frame rates.
 ### Pose Stabilization
 
 In some situations the box jumps away one frame, and goes back correctly again the next frame. To reduce this effect,
-there's the PoseOutlierDetector, which detects
+there's the PoseOutlierDetector, which detects pose estimates whose rotation is not similar enough to any recently 
+accepted rotation, rejects them for that frame, and only accepts a new rotation again once it matches the current pose history.
 
-
-To reduce this effect, the system applies additional rotational stabilization before passing 
-the result through a **Kalman filter** to smooth short-term pose jitter.
+Additionally there's also the **Kalman filter**, which reduces some small jittering. Most of the time the effect is very minimal though,
+and the disadvantage of it is that on faster movements it can make the tracking look a little bit slow.
 
 In here you can see the yellow lines are *without* Kalman, and the white lines are *with* kalman.
-Most of the time the effect is very minimal:  
 ![Alt text](images/kalman_compare.gif)    
-The disadvantage of the Kalman is that in certain situation when move the box moves faster, the Kalman filter
-makes the tracking appear a bit delayed.
 
 # How to use it on any box
 
