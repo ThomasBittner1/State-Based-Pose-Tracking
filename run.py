@@ -21,7 +21,7 @@ WINDOW_NAME = "Box Tracker"
 class AppConfig:
     input_source: int | str | Path = 0 # this is the camera index or video path
     camera_calibration_path: Path = Path("calibration/camera.json")
-    model_path: Path = Path(r"C:\ComputerVision\_Datasets_\tb_dataManager\box_tracker_tracker\train\weights\best.engine")
+    model_path: Path | None = Path("models/logitech_0.engine")
     default_fps: float = 30.0
 
     # feature matching / optical flow:
@@ -152,18 +152,32 @@ def build_reference_planes(config):
     return [front_plane, left_plane, right_plane, back_plane, back_plane], aruco_registry
 
 
+def load_optional_detection_model(config):
+    if config.model_path is None:
+        print("No YOLO model configured; using full-frame feature matching.")
+        return None
+
+    time_before_load_detection_model = time.time()
+    try:
+        detection_model = yolo.load_detection_model(
+            config.model_path,
+            config.yolo_confidence,
+            config.yolo_iou,
+            config.yolo_input_size,
+        )
+    except FileNotFoundError as error:
+        print(f"{error}; using full-frame feature matching.")
+        return None
+
+    print (f'loading yolo model took {time.time() - time_before_load_detection_model} seconds.')
+    print(detection_model.describe())
+    return detection_model
+
+
 def main():
     config = AppConfig(enable_pose_kalman=True, straighten_z_on_front=False)
     all_planes, aruco_registry = build_reference_planes(config)
-    time_before_load_detection_model = time.time()
-    detection_model = yolo.load_detection_model(
-        config.model_path,
-        config.yolo_confidence,
-        config.yolo_iou,
-        config.yolo_input_size,
-    )
-    print (f'loading yolo model took {time.time() - time_before_load_detection_model} seconds.')
-    print(detection_model.describe())
+    detection_model = load_optional_detection_model(config)
     reference_column_width = max(plane.warped_reference_img.shape[1] for plane in all_planes)
 
     input_source = config.input_source
@@ -230,6 +244,7 @@ def main():
     current_frame_number = config.video_start_frame if is_video_file else 0
     use_current_frame = True
     step_once = False
+    aruco_found_count = 0
     recent_fps_values = deque(maxlen=config.fps_display_average_window)
     timing_history = defaultdict(lambda: deque(maxlen=config.fps_display_average_window))
     frame_count = 0
@@ -335,15 +350,20 @@ def main():
                 add_timing(frame_timings, "pose", stage_start)
 
             else: # no aruco found
-                stage_start = time.perf_counter()
-                detections = detection_model.predict(frame)
-                best_yolo_detection = yolo.select_best_yolo_detection(detections)
-                add_timing(frame_timings, "yolo", stage_start)
-                if best_yolo_detection is not None:
-                    used_yolo_detections = [best_yolo_detection]
-                    recent_yolo_bounds.append(best_yolo_detection["bounds"])
-                    recent_yolo_bounds = recent_yolo_bounds[-config.yolo_bounds_history_size:]
-                combined_yolo_bounds = geometry.combine_detection_bounds(recent_yolo_bounds, frame.shape)
+                if detection_model is not None:
+                    stage_start = time.perf_counter()
+                    detections = detection_model.predict(frame)
+                    best_yolo_detection = yolo.select_best_yolo_detection(detections)
+                    add_timing(frame_timings, "yolo", stage_start)
+                    if best_yolo_detection is not None:
+                        used_yolo_detections = [best_yolo_detection]
+                        recent_yolo_bounds.append(best_yolo_detection["bounds"])
+                        recent_yolo_bounds = recent_yolo_bounds[-config.yolo_bounds_history_size:]
+                    combined_yolo_bounds = geometry.combine_detection_bounds(recent_yolo_bounds, frame.shape)
+                else:
+                    detections = []
+                    used_yolo_detections = []
+                    combined_yolo_bounds = None
 
                 best_plane = None
                 stage_start = time.perf_counter()
@@ -379,12 +399,6 @@ def main():
             else:
                 filtered_pose_plane_name = None
 
-            if not config.draw_non_kalman_results:
-                aruco_status_text = f"ArUco count: {aruco_found_count}"
-                aruco_status_color = (0, 0, 255) if aruco_found_count == 0 else (255, 255, 255)
-                cv2.putText(frame_preview, aruco_status_text, (20, 35), cv2.FONT_HERSHEY_SIMPLEX, 0.9, aruco_status_color, 2, cv2.LINE_AA)
-                cv2.putText(frame_preview, aruco_status_text, (20, 35), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 0, 0), 1, cv2.LINE_AA)
-
         else: # paused
             pass
 
@@ -412,9 +426,13 @@ def main():
                 active_camera_matrix,
                 active_distortion_coefficients,
                 blended_pose_result,
-                draw_label=not config.draw_non_kalman_results,
+                draw_label=True,
             )
             add_timing(frame_timings, "draw_box", stage_start)
+        aruco_status_text = f"ArUco count: {aruco_found_count}"
+        aruco_status_color = (0, 0, 255) if aruco_found_count == 0 else (255, 255, 255)
+        cv2.putText(frame_preview, aruco_status_text, (20, 35), cv2.FONT_HERSHEY_SIMPLEX, 0.9, aruco_status_color, 2, cv2.LINE_AA)
+        cv2.putText(frame_preview, aruco_status_text, (20, 35), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 0, 0), 1, cv2.LINE_AA)
         text_origin = (frame_preview.shape[1] - fps_text_width - 20, 20 + fps_text_height)
         cv2.putText(frame_preview, f"fps: {averaged_fps:.1f}", text_origin, cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 255), 2, cv2.LINE_AA)
 

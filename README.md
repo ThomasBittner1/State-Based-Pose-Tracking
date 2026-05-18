@@ -41,7 +41,9 @@ This mode is computationally heavier and results in lower frame rates.
 
 ### Pose Stabilization
 
-When the box becomes nearly planar to the camera, solvePnP can become unstable and flip between two rotations.
+In some situations the box jumps away one frame, and goes back correctly again the next frame. To reduce this effect,
+there's the PoseOutlierDetector, which detects
+
 
 To reduce this effect, the system applies additional rotational stabilization before passing 
 the result through a **Kalman filter** to smooth short-term pose jitter.
@@ -49,7 +51,8 @@ the result through a **Kalman filter** to smooth short-term pose jitter.
 In here you can see the yellow lines are *without* Kalman, and the white lines are *with* kalman.
 Most of the time the effect is very minimal:  
 ![Alt text](images/kalman_compare.gif)    
-
+The disadvantage of the Kalman is that in certain situation when move the box moves faster, the Kalman filter
+makes the tracking appear a bit delayed.
 
 # How to use it on any box
 

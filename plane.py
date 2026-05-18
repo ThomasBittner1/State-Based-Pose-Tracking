@@ -251,8 +251,8 @@ class Plane:
 
     def find_matches(self, frame_gray, combined_yolo_bounds, concat_points=False):
         if combined_yolo_bounds is None:
-            self.reset_tracking_result()
-            return 0.0
+            height, width = frame_gray.shape[:2]
+            combined_yolo_bounds = (0, 0, width, height)
 
         left, top, right, bottom = combined_yolo_bounds
         cropped_frame = frame_gray[top:bottom, left:right]
