@@ -6,7 +6,7 @@ robustness and tracking stability.
 The system first scans the camera feed and checks if ArUcos are present in the image. And then it switches between
 those 2 states.
 
-![Alt text](images/box_track.gif)  
+![Alt text](images/boxTracker_short.gif)  
 
 
 ```text

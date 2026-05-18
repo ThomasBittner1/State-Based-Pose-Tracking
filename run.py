@@ -44,7 +44,8 @@ class AppConfig:
     fps_display_average_window: int = 10
     debug_timing_log_interval: int = 60
     debug_record_webcam: bool = False
-    debug_recording_path: Path = Path("recorded_002.mp4")
+    debug_recording_path: Path = Path("recorded_kalman.mp4")
+    debug_recording_include_overlays: bool = True
     debug_print_timing: bool = False
     video_start_frame: int = 0
 
@@ -191,7 +192,8 @@ def main():
             print(f"Error: Could not open movie writer for {config.debug_recording_path}.")
             cap.release()
             sys.exit(1)
-        movie_writer.write(frame)
+        if not config.debug_recording_include_overlays:
+            movie_writer.write(frame)
     calibration = camera.load_calibration(config.camera_calibration_path, (capture_width, capture_height))
     if calibration is None:
         calibration = camera.create_fallback_calibration(frame.shape)
@@ -212,8 +214,10 @@ def main():
     while True:
         loop_start_time = time.perf_counter()
         frame_timings = {}
+        should_record_current_frame = False
 
         if not paused or step_once:
+            should_record_current_frame = True
             if use_current_frame:
                 use_current_frame = False
             else:
@@ -222,7 +226,7 @@ def main():
                     print("Error: Failed to read frame from webcam.")
                     break
                 current_frame_number += 1
-                if movie_writer is not None:
+                if movie_writer is not None and not config.debug_recording_include_overlays:
                     movie_writer.write(frame)
             unflipped_frame = np.copy(frame)
             cv2.flip(frame, 1, frame)
@@ -392,6 +396,13 @@ def main():
             cv2.imshow(WINDOW_NAME, frame_with_references)
         else:
             cv2.imshow(WINDOW_NAME, frame_preview)
+
+        if (
+            movie_writer is not None
+            and config.debug_recording_include_overlays
+            and should_record_current_frame
+        ):
+            movie_writer.write(frame_preview)
 
         add_timing(frame_timings, "frame", loop_start_time)
         frame_duration_ms = frame_timings["frame"]
