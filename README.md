@@ -86,7 +86,6 @@ This is not mandatory, but a model that detects the box can make it more stable 
 Just generate a model (preferable using *Ultralytics*), that tracks the box. Class name doesn't matter in this case.
 Specify that model in the app config's **model_path**, supported model types are **Ultralytics**, **ONNX** and **TensorRT**.
 
-
 ### Camera Calibration
 
 Camera Calibration is not mandatory either, but it can help the results. To start, put the *setup/calibrate_pattern.png*
@@ -128,4 +127,10 @@ bottleneck is checking/verifying homography on the ORB/Akaze features.
 - Camera needs to be either high resolution, or the box needs to be close to camera for this to work stable.
 
 
+# More on YOLO
+
+The models for the Logitech box were created using *Ultralytics* and *Label-Studio*. To make data handling easier, 
+I created this tool that handles things like quality checking, pre-training, and splitting data:
+https://github.com/ThomasBittner1/DataManager
+![Alt text](datamanager.png)  
 
