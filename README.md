@@ -30,13 +30,6 @@ Small or distant ArUcos can introduce noticeable jitter, so the system additiona
 feature matching and **Optical Flow** tracking to generate additional feature points and improve pose stability.
 
 
-### Kalman
-The Kalman is a post filter to reduce the jiggling.  
-![Alt text](images/kalman_compare.gif)    
-Left side: without Kalman  
-Right side: with Kalman  
-
-
 ### Fallback Tracking Mode (No ArUcos Visible)
 
 If no ArUcos are visible due to occlusion or markerless box sides, the system switches to a fallback 
@@ -52,6 +45,10 @@ When the box becomes nearly planar to the camera, solvePnP can become unstable a
 
 To reduce this effect, the system applies additional rotational stabilization before passing 
 the result through a **Kalman filter** to smooth short-term pose jitter.
+
+In here you can see the yellow lines are *without* Kalman, and the white lines are *with* kalman.
+Most of the time the effect is very minimal:  
+![Alt text](images/kalman_compare.gif)    
 
 
 # How to use it on any box
