@@ -43,9 +43,9 @@ class AppConfig:
     # debug:
     fps_display_average_window: int = 10
     debug_timing_log_interval: int = 60
-    debug_record_webcam: bool = False
-    debug_recording_path: Path = Path("recorded_kalman.mp4")
+    debug_recording_path: Path | None = None # Path("recorded_kalman2.mp4")
     debug_recording_include_overlays: bool = True
+    draw_non_kalman_results: bool = True
     debug_print_timing: bool = False
     video_start_frame: int = 0
 
@@ -102,6 +102,29 @@ def format_timing_summary(timing_history):
     return " | ".join(parts)
 
 
+def draw_planes_overlay(
+    frame,
+    all_planes,
+    camera_matrix,
+    distortion_coefficients,
+    pose_result,
+    box_color=(255, 255, 255),
+    box_thickness=3,
+    draw_label=True,
+):
+    for plane in all_planes:
+        plane.draw(
+            frame,
+            camera_matrix,
+            distortion_coefficients,
+            pose_result=pose_result,
+            skip_if_not_visible=True,
+            box_color=box_color,
+            box_thickness=box_thickness,
+            draw_label=draw_label,
+        )
+
+
 def build_reference_planes(config):
     aruco_registry = aruco.ArucoRegistry()
     pose_outlier_detector = PoseOutlierDetector()
@@ -130,7 +153,7 @@ def build_reference_planes(config):
 
 
 def main():
-    config = AppConfig(enable_pose_kalman=True, straighten_z_on_front=False, debug_record_webcam=True)
+    config = AppConfig(enable_pose_kalman=True, straighten_z_on_front=False)
     all_planes, aruco_registry = build_reference_planes(config)
     time_before_load_detection_model = time.time()
     detection_model = yolo.load_detection_model(
@@ -185,11 +208,12 @@ def main():
     if fps <= 0.0 or not np.isfinite(fps):
         fps = config.default_fps
 
-    if config.debug_record_webcam and isinstance(input_source, int):
+    if config.debug_recording_path is not None and isinstance(input_source, int):
+        debug_recording_path = Path(config.debug_recording_path)
         frame_height, frame_width = frame.shape[:2]
-        movie_writer = cv2.VideoWriter(str(config.debug_recording_path), cv2.VideoWriter_fourcc(*"mp4v"), fps, (frame_width, frame_height))
+        movie_writer = cv2.VideoWriter(str(debug_recording_path), cv2.VideoWriter_fourcc(*"mp4v"), fps, (frame_width, frame_height))
         if not movie_writer.isOpened():
-            print(f"Error: Could not open movie writer for {config.debug_recording_path}.")
+            print(f"Error: Could not open movie writer for {debug_recording_path}.")
             cap.release()
             sys.exit(1)
         if not config.debug_recording_include_overlays:
@@ -352,10 +376,11 @@ def main():
             else:
                 filtered_pose_plane_name = None
 
-            aruco_status_text = f"ArUco count: {aruco_found_count}"
-            aruco_status_color = (0, 0, 255) if aruco_found_count == 0 else (255, 255, 255)
-            cv2.putText(frame_preview, aruco_status_text, (20, 35), cv2.FONT_HERSHEY_SIMPLEX, 0.9, aruco_status_color, 2, cv2.LINE_AA)
-            cv2.putText(frame_preview, aruco_status_text, (20, 35), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 0, 0), 1, cv2.LINE_AA)
+            if not config.draw_non_kalman_results:
+                aruco_status_text = f"ArUco count: {aruco_found_count}"
+                aruco_status_color = (0, 0, 255) if aruco_found_count == 0 else (255, 255, 255)
+                cv2.putText(frame_preview, aruco_status_text, (20, 35), cv2.FONT_HERSHEY_SIMPLEX, 0.9, aruco_status_color, 2, cv2.LINE_AA)
+                cv2.putText(frame_preview, aruco_status_text, (20, 35), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 0, 0), 1, cv2.LINE_AA)
 
         else: # paused
             pass
@@ -367,19 +392,36 @@ def main():
 
         if best_plane is not None:
             stage_start = time.perf_counter()
-            for plane in all_planes:
-                plane.draw(frame_preview,
-                            active_camera_matrix,
-                            active_distortion_coefficients,
-                            pose_result=blended_pose_result,
-                            skip_if_not_visible=True)
+            if config.draw_non_kalman_results:
+                draw_planes_overlay(
+                    frame_preview,
+                    all_planes,
+                    active_camera_matrix,
+                    active_distortion_coefficients,
+                    best_plane.pose_result,
+                    box_color=(0, 255, 255),
+                    box_thickness=2,
+                    draw_label=False,
+                )
+            draw_planes_overlay(
+                frame_preview,
+                all_planes,
+                active_camera_matrix,
+                active_distortion_coefficients,
+                blended_pose_result,
+                draw_label=not config.draw_non_kalman_results,
+            )
             add_timing(frame_timings, "draw_box", stage_start)
-        text_origin = (frame_preview.shape[1] - fps_text_width - 20, 20 + fps_text_height)
-        cv2.putText(frame_preview, f"fps: {averaged_fps:.1f}", text_origin, cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 255), 2, cv2.LINE_AA)
+        if not config.draw_non_kalman_results:
+            text_origin = (frame_preview.shape[1] - fps_text_width - 20, 20 + fps_text_height)
+            cv2.putText(frame_preview, f"fps: {averaged_fps:.1f}", text_origin, cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 255), 2, cv2.LINE_AA)
 
         if debug_view:
             yolo.draw_yolo_overlay(frame_preview, detections, combined_bounds=combined_yolo_bounds)
             if best_plane is not None:
+                if config.draw_non_kalman_results:
+                    best_plane.draw(frame_preview, active_camera_matrix, active_distortion_coefficients, pose_result=best_plane.pose_result,
+                        draw_label=False, draw_axes=True, box_color=(0, 255, 255), box_thickness=2)
                 best_plane.draw(frame_preview, active_camera_matrix, active_distortion_coefficients, draw_axes=True)
 
             frame_height, frame_width = frame_preview.shape[:2]
@@ -432,7 +474,7 @@ def main():
     cap.release()
     if movie_writer is not None:
         movie_writer.release()
-        print(f"Recorded webcam video to {config.debug_recording_path.resolve()}")
+        print(f"Recorded webcam video to {Path(config.debug_recording_path).resolve()}")
     cv2.destroyAllWindows()
 
 

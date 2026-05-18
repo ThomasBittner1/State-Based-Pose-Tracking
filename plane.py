@@ -486,6 +486,8 @@ class Plane:
         draw_label=True,
         draw_axes=False,
         skip_if_not_visible=False,
+        box_color=(255, 255, 255),
+        box_thickness=3,
     ):
         if pose_result is None:
             pose_result = self.pose_result
@@ -526,7 +528,7 @@ class Plane:
                 projected_points = projected_points.reshape(-1, 2)
                 if np.isfinite(projected_points).all():
                     cv2.polylines(frame, [np.rint(projected_points).astype(np.int32)],
-                                  isClosed=True, color=(255, 255, 255), thickness=3, lineType=cv2.LINE_AA)
+                                  isClosed=True, color=box_color, thickness=box_thickness, lineType=cv2.LINE_AA)
                     if draw_label:
                         face_width = float(np.linalg.norm(face_points[1] - face_points[0]))
                         face_height = float(np.linalg.norm(face_points[3] - face_points[0]))

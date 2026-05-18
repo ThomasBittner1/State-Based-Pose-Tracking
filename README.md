@@ -29,6 +29,14 @@ When ArUco markers are visible, they are used as the primary source for solvePnP
 Small or distant ArUcos can introduce noticeable jitter, so the system additionally uses **ORB/Akaze** 
 feature matching and **Optical Flow** tracking to generate additional feature points and improve pose stability.
 
+
+### Kalman
+The Kalman is a post filter to reduce the jiggling.  
+![Alt text](images/kalman_compare.gif)    
+Left side: without Kalman  
+Right side: with Kalman  
+
+
 ### Fallback Tracking Mode (No ArUcos Visible)
 
 If no ArUcos are visible due to occlusion or markerless box sides, the system switches to a fallback 
