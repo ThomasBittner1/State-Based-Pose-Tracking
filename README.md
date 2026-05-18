@@ -7,7 +7,7 @@ The system first scans the camera feed and checks if ArUcos are present in the i
 those 2 states.
 
 ![Alt text](images/boxTracker_short.gif)  
-
+For longer and larger version, click [here](https://youtu.be/yPEjJDUZxCk) 
 
 ```text
 Camera
