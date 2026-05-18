@@ -415,9 +415,8 @@ def main():
                 draw_label=not config.draw_non_kalman_results,
             )
             add_timing(frame_timings, "draw_box", stage_start)
-        if not config.draw_non_kalman_results:
-            text_origin = (frame_preview.shape[1] - fps_text_width - 20, 20 + fps_text_height)
-            cv2.putText(frame_preview, f"fps: {averaged_fps:.1f}", text_origin, cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 255), 2, cv2.LINE_AA)
+        text_origin = (frame_preview.shape[1] - fps_text_width - 20, 20 + fps_text_height)
+        cv2.putText(frame_preview, f"fps: {averaged_fps:.1f}", text_origin, cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 255), 2, cv2.LINE_AA)
 
         if debug_view:
             yolo.draw_yolo_overlay(frame_preview, used_yolo_detections, combined_bounds=combined_yolo_bounds)
