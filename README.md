@@ -6,7 +6,7 @@ robustness and tracking stability.
 The system first scans the camera feed and checks if ArUcos are present in the image. And then it switches between
 those 2 states.
 
-![Alt text](images/boxTracker_short.gif)  
+![Alt text](docs/images/boxTracker_short.gif)  
 For longer and larger version, click [here](https://youtu.be/yPEjJDUZxCk) 
 
 ```text
@@ -48,7 +48,7 @@ Additionally, there is a **Kalman filter**, which reduces small jitter. Most of 
 downside is that during faster movements, it can make the tracking appear slightly delayed.
 
 In the example below, the yellow lines show the pose *without* Kalman filtering, and the white lines show the pose *with* Kalman filtering.
-![Alt text](images/kalman_compare.gif)
+![Alt text](docs/images/kalman_compare.gif)
 
 # How to use it on any box
 
@@ -59,7 +59,7 @@ on the sides. No ArUcos are needed to be specified. The tool will automatically 
 measurements automatically.
   
 This section explains how to create these 4 images with their annotations:  
-![Alt text](images/annotations_2x2.png)  
+![Alt text](docs/images/annotations_2x2.png)  
 
 First capture the sides of the box. Run the following command:
 
@@ -112,7 +112,7 @@ positions in the live camera frame:
 - **Thick lines** are homography inliers, which are trusted for pose estimation.
 - **Thin lines** are rejected/outlier matches
 
-![Alt text](images/debug_mode.jpg)  
+![Alt text](docs/images/debug_mode.jpg)  
 
 
 # Challenges
@@ -132,5 +132,5 @@ bottleneck is checking/verifying homography on the ORB/Akaze features.
 The models for the Logitech box were created using *Ultralytics* and *Label-Studio*. To make data handling easier, 
 I created this tool that handles things like quality checking, pre-training, and splitting data:
 https://github.com/ThomasBittner1/DataManager
-![Alt text](datamanager.png)  
+![Alt text](docs/images/datamanager.png)  
 

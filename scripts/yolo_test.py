@@ -4,8 +4,7 @@ import sys
 
 import cv2
 
-import yolo
-
+from src import yolo
 
 WINDOW_NAME = "YOLO Test"
 

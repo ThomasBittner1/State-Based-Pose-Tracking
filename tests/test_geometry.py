@@ -1,7 +1,7 @@
 import cv2
 import numpy as np
 
-import geometry
+from src import geometry
 
 
 def test_order_rectangle_points_returns_clockwise_from_top_left():

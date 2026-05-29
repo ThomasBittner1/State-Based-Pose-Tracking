@@ -9,8 +9,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-import camera
-
+from src import camera
 
 CAMERA_INDEX = 0
 CHESSBOARD_SIZE = (9, 6)

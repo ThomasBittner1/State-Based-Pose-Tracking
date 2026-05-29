@@ -6,13 +6,7 @@ import time
 import cv2
 import numpy as np
 
-
-import aruco
-import camera
-import geometry
-import plane
-import yolo
-
+from src import plane, yolo, geometry, camera, aruco
 
 WINDOW_NAME = "Box Tracker"
 

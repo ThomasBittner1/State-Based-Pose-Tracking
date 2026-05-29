@@ -1,9 +1,7 @@
 __pycache__/
 .venv/
 .idea/
-*.log
-recorded_*.mp4
 captures/
-models/
+models/*
 calibration/
 _annotations_2x2.png
