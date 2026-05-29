@@ -5,9 +5,7 @@ import json
 import cv2
 import numpy as np
 
-import aruco
-import drawing
-import geometry
+from . import aruco, drawing, geometry
 
 
 LABEL_PATCH_WIDTH = 320
