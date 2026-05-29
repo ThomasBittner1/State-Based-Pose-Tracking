@@ -17,6 +17,8 @@ SUPPORTED_FEATURE_DETECTORS = {"ORB", "AKAZE"}
 
 
 class Plane:
+    valid_planes = []
+
     def __init__(
         self,
         name,
@@ -41,7 +43,14 @@ class Plane:
         self.pose_result = None
         self.world_size = world_size
         self.display_color_multiplier = float(np.clip(display_color_multiplier, 0.0, 1.0))
-        self.crop_reference_image(json_path)
+        self.valid = False
+        try:
+            self.crop_reference_image(json_path)
+        except FileNotFoundError as error:
+            print(f"Skipping {self.name}: {error}")
+            return
+        self.valid = True
+        self.valid_planes.append(self)
 
     def get_rendered_label(self, label, face_width, face_height):
         aspect_ratio = round(float(face_height) / max(float(face_width), 1e-6), 4)
@@ -165,6 +174,9 @@ class Plane:
 
 
     def compute_feature_correspondences(self, plane_size, rotation_offset=None, translation_offset=(0.0, 0.0, 0.0)):
+        if not self.valid:
+            return False
+
         if rotation_offset is None:
             rotation_offset = [[1, 0, 0], [0, 1, 0], [0, 0, 1]]
         self.rotation_offset = np.array(rotation_offset, dtype=np.float64)

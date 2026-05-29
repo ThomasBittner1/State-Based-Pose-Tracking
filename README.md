@@ -47,7 +47,7 @@ To reduce this, the `PoseOutlierDetector` rejects pose estimates whose rotation 
 Additionally, there is a **Kalman filter**, which reduces small jitter. Most of the time, its effect is subtle. The 
 downside is that during faster movements, it can make the tracking appear slightly delayed.
 
-In the example below, the yellow lines show the pose *without* Kalman filtering, and the white lines show the pose *with* Kalman filtering.
+In the example below, the yellow lines show the pose *without* Kalman filtering, and the white lines show the pose *with* Kalman filtering.  
 ![Alt text](docs/images/kalman_compare.gif)
 
 # How to use it on any box
@@ -76,7 +76,8 @@ This opens the *front.jpg* image and let's you draw the rectangle by just clicki
 close. This generates the *front.json* file that contains the info about the rectangle.
 
 Repeat this process for each side by substituting **front** with the corresponding other side name 
-(**left**, **right**, **back**, **bottom**, **top**). You don't need to do all of them.
+(**left**, **right**, **back**, **bottom**, **top**). You don't need to do all of them, but the mandatory ones 
+are **front** and either **left** or **right**.
 
 Do not confuse left and right. Side names are defined in the box's local coordinate system, not relative to the screen or camera view.
 (If you hold the box with the front face pointing forward, the side physically on your left corresponds to the left plane)

@@ -122,15 +122,24 @@ def draw_planes_overlay(
 def build_reference_planes(config):
     aruco_registry = aruco.ArucoRegistry()
     pose_outlier_detector = PoseOutlierDetector()
+    plane.Plane.valid_planes = []
 
+    front_plane = plane.Plane('front', './captures/front.json', aruco_registry, pose_outlier_detector, config)
     left_plane = plane.Plane('left', './captures/left.json', aruco_registry, pose_outlier_detector, config)
     right_plane = plane.Plane('right', './captures/right.json', aruco_registry, pose_outlier_detector, config)
-    front_plane = plane.Plane('front', './captures/front.json', aruco_registry, pose_outlier_detector, config)
     back_plane = plane.Plane('back', './captures/back.json', aruco_registry, pose_outlier_detector, config)
+    bottom_plane = plane.Plane('bottom', './captures/bottom.json', aruco_registry, pose_outlier_detector, config)
+    top_plane = plane.Plane('top', './captures/top.json', aruco_registry, pose_outlier_detector, config)
+
+    if not front_plane.valid:
+        raise FileNotFoundError("Missing required front plane capture.")
+    side_plane = right_plane if right_plane.valid else left_plane
+    if not side_plane.valid:
+        raise FileNotFoundError("Missing required left or right plane capture.")
 
     box_width = 10.0
     box_height = box_width / front_plane.ratio
-    box_depth = box_height * right_plane.ratio
+    box_depth = box_height * side_plane.ratio
     box_size = (box_width, box_height, box_depth)
     print (f'Estimated size is ({box_size[0]:.3f}, {box_size[1]:.3f}, {box_size[2]:.3f}')
 
@@ -142,8 +151,12 @@ def build_reference_planes(config):
                                                 rotation_offset=[[0, 0, -1], [0, 1, 0], [1, 0, 0]], translation_offset=(0, 0, box_width * 0.5))
     right_plane.compute_feature_correspondences((box_depth, box_height),
                                                 rotation_offset=[[0, 0, 1], [0, 1, 0], [-1, 0, 0]], translation_offset=(0, 0, box_width * 0.5))
+    bottom_plane.compute_feature_correspondences((box_width, box_depth),
+                                                 rotation_offset=[[1, 0, 0], [0, 0, -1], [0, -1, 0]], translation_offset=(0, 0, box_height * 0.5))
+    top_plane.compute_feature_correspondences((box_width, box_depth),
+                                              rotation_offset=[[1, 0, 0], [0, 0, 1], [0, 1, 0]], translation_offset=(0, 0, box_height * 0.5))
 
-    return [front_plane, left_plane, right_plane, back_plane, back_plane], aruco_registry
+    return plane.Plane.valid_planes, aruco_registry
 
 
 def load_optional_detection_model(config):
