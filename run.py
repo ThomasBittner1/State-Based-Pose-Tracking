@@ -152,9 +152,9 @@ def build_reference_planes(config):
     right_plane.compute_feature_correspondences((box_depth, box_height),
                                                 rotation_offset=[[0, 0, 1], [0, 1, 0], [-1, 0, 0]], translation_offset=(0, 0, box_width * 0.5))
     bottom_plane.compute_feature_correspondences((box_width, box_depth),
-                                                 rotation_offset=[[1, 0, 0], [0, 0, -1], [0, -1, 0]], translation_offset=(0, 0, box_height * 0.5))
+                                                 rotation_offset=[[1, 0, 0], [0, 0, -1], [0, 1, 0]], translation_offset=(0, 0, box_height * 0.5))
     top_plane.compute_feature_correspondences((box_width, box_depth),
-                                              rotation_offset=[[1, 0, 0], [0, 0, 1], [0, 1, 0]], translation_offset=(0, 0, box_height * 0.5))
+                                              rotation_offset=[[1, 0, 0], [0, 0, 1], [0, -1, 0]], translation_offset=(0, 0, box_height * 0.5))
 
     return plane.Plane.valid_planes, aruco_registry
 
